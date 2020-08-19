@@ -1,0 +1,32 @@
+main: com.cavetale.hideandseek.HideAndSeekPlugin
+
+name: HideAndSeek
+version: 0.1
+description: HideAndSeek Plugin
+api-version: 1.13
+
+author: StarTux
+website: https://github.com/StarTux/HideAndSeek
+
+depend: [Sidebar]
+softdepend: []
+
+commands:
+
+  hideandseek:
+    aliases: []
+    description: HideAndSeek Command
+    permission: hideandseek.hideandseek
+    usage: |-
+      /hideandseek setseek - Set seeker start location
+      /hideandseek sethide - Set hideer start location
+      /hideandseek start - Start a game
+      /hideandseek save - Save runtime
+      /hideandseek load - (Re)load runtime
+      /hideandseek fair - List player fairness
+
+permissions:
+
+  hideandseek.hideandseek:
+    description: Use /hideandseek
+    default: op
