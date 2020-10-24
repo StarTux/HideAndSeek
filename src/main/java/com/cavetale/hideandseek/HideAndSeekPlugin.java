@@ -164,7 +164,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             .collect(Collectors.toList());
         Collections.shuffle(players);
         Collections.sort(players, (a, b) -> Integer.compare(getFairness(b), getFairness(a)));
-        int half = players.size() / 2;
+        int half = players.size() <= 2 ? 1 : players.size() / 2;
         hiders.clear();
         seekers.clear();
         for (int i = 0; i < players.size(); i += 1) {
