@@ -25,6 +25,7 @@ import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -164,13 +165,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             .collect(Collectors.toList());
         Collections.shuffle(players);
         Collections.sort(players, (a, b) -> Integer.compare(getFairness(b), getFairness(a)));
-        int half = players.size() <= 2 ? 1 : players.size() / 2;
+        int half = players.size() <= 2 ? 1 : players.size() / 2 + 1;
         hiders.clear();
         seekers.clear();
         for (int i = 0; i < players.size(); i += 1) {
             Player player = players.get(i);
             undisguise(player);
-            if (i <= half) {
+            if (i < half) {
                 hiders.add(player.getUniqueId());
             } else {
                 seekers.add(player.getUniqueId());
@@ -199,6 +200,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             seeker.sendTitle(ChatColor.RED + "Wait!",
                             ChatColor.RED + "You're a Seeker");
             seeker.getInventory().addItem(hintEye(2 + random.nextInt(4)));
+            seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 4 + random.nextInt(5)));
         }
         setPhase(Phase.HIDE);
         return true;
@@ -348,7 +350,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             }
             for (Player hider : getHiders()) {
                 if (ticks % 20 == 0) {
-                    if (getTimeLeft() < 5) {
+                    if (getTimeLeft() < 30) {
                         hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false), true);
                     } else {
                         hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 1, true, false), true);
@@ -412,14 +414,36 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 }
             }
             break;
-        case SEEK:
+        case SEEK: {
+            String hint = "";
+            Player player = event.getPlayer();
+            Location loc = player.getLocation();
+            if (seekers.contains(player.getUniqueId())) {
+                double min = Double.MAX_VALUE;
+                for (Player hider : getHiders()) {
+                    if (!hider.getWorld().equals(player.getWorld())) continue;
+                    min = Math.min(min, hider.getLocation().distanceSquared(loc));
+                }
+                if (min < 16 * 16) {
+                    hint = "" + ((ticks % 2) == 0 ? ChatColor.DARK_RED : ChatColor.GOLD) + ChatColor.BOLD + "HOT";
+                } else if (min < 32 * 32) {
+                    hint = "" + ChatColor.GOLD + ChatColor.ITALIC + "Warmer";
+                } else if (min < 48 * 48) {
+                    hint = "" + ChatColor.YELLOW + ChatColor.ITALIC + "Warm";
+                } else {
+                    hint = "" + ChatColor.AQUA + ChatColor.ITALIC + "Cold";
+                }
+                hint = ChatColor.GRAY + "Hint: " + hint;
+            }
             event.addLines(this, Priority.DEFAULT,
                            identity,
                            ChatColor.GREEN + "Seeking...",
                            ChatColor.WHITE + "  " + getTimeLeft(),
                            ChatColor.GRAY + "Seekers: " + ChatColor.WHITE + seekers.size(),
-                           ChatColor.GRAY + "Hiders: " + ChatColor.WHITE + hiders.size());
+                           ChatColor.GRAY + "Hiders: " + ChatColor.WHITE + hiders.size(),
+                           hint);
             break;
+        }
         case END:
             if (hiders.isEmpty()) {
                 event.addLines(this, Priority.DEFAULT,
@@ -451,8 +475,34 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (phase != Phase.SEEK) return;
         if (!(event.getRightClicked() instanceof Player)) return;
         Player seeker = event.getPlayer();
+        if (!seekers.contains(seeker.getUniqueId())) return;
         Player hider = (Player) event.getRightClicked();
+        if (!hiders.contains(hider.getUniqueId())) {
+            Entity target = seeker.getTargetEntity(4);
+            if (target instanceof Player) hider = (Player) target;
+        }
         discover(seeker, hider);
+    }
+
+    @EventHandler
+    void onPlayerInteractBlock(PlayerInteractEvent event) {
+        switch (event.getAction()) {
+        case LEFT_CLICK_AIR:
+        case LEFT_CLICK_BLOCK:
+        case RIGHT_CLICK_AIR:
+        case RIGHT_CLICK_BLOCK:
+            break;
+        default:
+            return;
+        }
+        if (event.getHand() != EquipmentSlot.HAND) return;
+        if (phase != Phase.SEEK) return;
+        Player seeker = event.getPlayer();
+        if (!seekers.contains(seeker.getUniqueId())) return;
+        if (!seeker.getWorld().getName().equals(tag.worldName)) return;
+        Entity target = seeker.getTargetEntity(4);
+        if (!(target instanceof Player)) return;
+        discover(seeker, (Player) target);
     }
 
     void discover(Player seeker, Player hider) {
@@ -517,7 +567,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    void onPlayerInteract(PlayerInteractEvent event) {
+    void onPlayerInteractItem(PlayerInteractEvent event) {
         switch (event.getAction()) {
         case RIGHT_CLICK_BLOCK:
         case RIGHT_CLICK_AIR:
@@ -525,26 +575,38 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         default:
             return;
         }
+        Player player = event.getPlayer();
+        if (!player.getWorld().getName().equals(tag.worldName)) return;
         if (event.getHand() != EquipmentSlot.HAND) return;
         if (!event.hasItem()) return;
-        if (phase != Phase.SEEK) return;
         ItemStack item = event.getItem();
         if (item == null) return;
-        Player player = event.getPlayer();
         switch (item.getType()) {
         case ENDER_EYE: {
+            if (phase != Phase.SEEK) {
+                event.setCancelled(true);
+                return;
+            }
             player.sendMessage(ChatColor.GREEN + "All hiders are meowing...");
             player.sendActionBar(ChatColor.GREEN + "All hiders are meowing...");
             hint();
             break;
         }
         case WHEAT: {
+            if (phase != Phase.SEEK) {
+                event.setCancelled(true);
+                return;
+            }
             summonDistraction(player);
             player.sendMessage(ChatColor.GREEN + "Summoning a distraction...");
             player.sendActionBar(ChatColor.GREEN + "Summoning a distraction...");
             break;
         }
         case RABBIT_FOOT:
+            if (phase != Phase.SEEK && phase != Phase.HIDE) {
+                event.setCancelled(true);
+                return;
+            }
             if (hiders.contains(player.getUniqueId())) {
                 player.sendMessage(ChatColor.GREEN + "Rerolling disguise...");
                 player.sendActionBar(ChatColor.GREEN + "Rerolling disguise...");
@@ -627,9 +689,17 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     void useInvisItem(Player player) {
+        if (!hiders.contains(player.getUniqueId())) {
+            player.sendMessage(ChatColor.RED + "You're not hiding!");
+            return;
+        }
         undisguise(player);
         player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 200, 1, true, false), true);
-        getServer().getScheduler().runTaskLater(this, () -> disguise(player), 200L);
+        getServer().getScheduler().runTaskLater(this, () -> {
+                if (player.isValid() && hiders.contains(player.getUniqueId())) {
+                    disguise(player);
+                }
+            }, 200L);
         player.sendMessage(ChatColor.AQUA + "Invisible for 10 seconds! GOGOGO");
         player.sendActionBar(ChatColor.AQUA + "Invisible for 10 seconds! GOGOGO");
     }
