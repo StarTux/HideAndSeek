@@ -220,6 +220,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     "falling_block hay_block",
                     "falling_block glowstone",
                     "falling_block oak_log",
+                    "falling_block oak_leaves",
                     "falling_block cobblestone",
                     "falling_block gold_ore",
                     "falling_block diamond_ore",
