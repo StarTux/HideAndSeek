@@ -40,6 +40,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -295,12 +296,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
+        if (!isGameWorld(event.getPlayer().getWorld())) return;
         if (event.getPlayer().isOp()) return;
         event.setCancelled(true);
     }
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
+        if (!isGameWorld(event.getPlayer().getWorld())) return;
         if (event.getPlayer().isOp()) return;
         event.setCancelled(true);
     }
@@ -319,6 +322,18 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (phase != Phase.IDLE) {
             seekers.add(event.getPlayer().getUniqueId());
         }
+    }
+
+    @EventHandler
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        if (!isGameWorld(event.getPlayer().getWorld())) return;
+        if (phase == Phase.IDLE) return;
+        if (event.getPlayer().isOp()) return;
+        if (event.getCause() != PlayerTeleportEvent.TeleportCause.ENDER_PEARL) return;
+        Player player = event.getPlayer();
+        if (isSeeker(player)) return;
+        event.setCancelled(true);
+        player.sendMessage(ChatColor.RED + "You're not a seeker!");
     }
 
     boolean consoleCommand(String cmd) {
@@ -531,6 +546,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
     }
 
+    public boolean isGameWorld(World world) {
+        return world.getName().equals(tag.worldName);
+    }
+
     public int getFairness(Player player) {
         Integer val = tag.fairness.get(player.getUniqueId());
         return val != null ? val : 0;
@@ -562,12 +581,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     void onInventoryOpen(InventoryOpenEvent event) {
+        if (!isGameWorld(event.getPlayer().getWorld())) return;
         if (event.getPlayer().isOp()) return;
         event.setCancelled(true);
     }
 
     @EventHandler
     void onPlayerInteractItem(PlayerInteractEvent event) {
+        if (!isGameWorld(event.getPlayer().getWorld())) return;
         switch (event.getAction()) {
         case RIGHT_CLICK_BLOCK:
         case RIGHT_CLICK_AIR:
