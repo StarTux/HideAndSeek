@@ -33,6 +33,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
@@ -47,6 +48,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 
 public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     Phase phase = Phase.IDLE;
@@ -58,6 +60,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     Tag tag;
     File tagFile;
     Map<UUID, EntityType> disguises = new HashMap<>();
+    Set<Entity> distractions = new HashSet<>();
 
     static final class Tag {
         String worldName;
@@ -116,7 +119,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
         case "start": {
             if (startGame()) {
-                sender.sendMessage("OK");
+                sender.sendMessage("Game started");
             } else {
                 sender.sendMessage("Error! See console.");
             }
@@ -124,6 +127,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
         case "stop": {
             stopGame();
+            sender.sendMessage("Game stopped");
             return true;
         }
         case "fair": {
@@ -144,6 +148,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             sender.sendMessage("Tag (re)loaded");
             return true;
         }
+        case "testdisguise": {
+            disguise(player);
+            sender.sendMessage("Player disguised");
+            return true;
+        }
         default:
             sender.sendMessage("Unknown subcommand: " + cmd);
             return true;
@@ -158,6 +167,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         hiders.clear();
         seekers.clear();
         setPhase(Phase.IDLE);
+        for (Entity entity : distractions) {
+            entity.remove();
+        }
+        distractions.clear();
     }
 
     boolean startGame() {
@@ -211,7 +224,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         List<EntityType> animals = Arrays
             .asList(EntityType.COW, EntityType.CHICKEN, EntityType.SHEEP,
                     EntityType.PIG, EntityType.BAT, EntityType.BOAT, EntityType.MINECART,
-                    EntityType.SQUID, EntityType.BEE, EntityType.CAT, EntityType.WOLF);
+                    EntityType.SQUID, EntityType.BEE, EntityType.CAT, EntityType.WOLF,
+                    EntityType.SNOWMAN, EntityType.RABBIT);
         List<String> blocks = Arrays
             .asList("falling_block grass_block",
                     "falling_block dirt",
@@ -229,7 +243,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     "falling_block diamond_ore",
                     "falling_block iron_ore",
                     "falling_block sand",
-                    "falling_block gravel"
+                    "falling_block gravel",
+                    "falling_block snow_block"
                     );
         if (random.nextBoolean()) {
             String block = blocks.get(random.nextInt(blocks.size()));
@@ -281,6 +296,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             } else {
                 for (Player hider : getHiders()) {
                     addFairness(hider, 1);
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + hider.getName() + " Hider");
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + hider.getName());
                 }
                 for (Player player : getServer().getOnlinePlayers()) {
                     player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 0.125f, 2.0f);
@@ -516,16 +533,27 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (!seekers.contains(seeker.getUniqueId())) return;
         if (!seeker.getWorld().getName().equals(tag.worldName)) return;
         Entity target = seeker.getTargetEntity(4);
-        if (!(target instanceof Player)) return;
-        discover(seeker, (Player) target);
+        if (target instanceof Player) {
+            discover(seeker, (Player) target);
+            return;
+        }
+        Location loc = seeker.getEyeLocation();
+        Vector vec = loc.getDirection().normalize().multiply(0.25);
+        for (int i = 0; i < 8; i += 1) {
+            loc = loc.add(vec);
+            for (Entity entity : loc.getWorld().getNearbyEntities(loc, 0.25, 0.25, 0.25)) {
+                if (!(entity instanceof Player)) continue;
+                if (discover(seeker, (Player) entity)) return;
+            }
+        }
     }
 
-    void discover(Player seeker, Player hider) {
-        if (!hiders.contains(hider.getUniqueId())) return;
+    boolean discover(Player seeker, Player hider) {
+        if (!hiders.contains(hider.getUniqueId())) return false;
         if (!seekers.contains(seeker.getUniqueId())) {
             seeker.sendMessage(ChatColor.RED + "You're not a seeker!");
             seeker.sendActionBar(ChatColor.RED + "You're not a seeker!");
-            return;
+            return false;
         }
         undisguise(hider);
         hiders.remove(hider.getUniqueId());
@@ -538,6 +566,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.2f, 2.0f);
         }
         seeker.getInventory().addItem(hintEye(1));
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + seeker.getName());
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + seeker.getName() + " Seeker");
+        return true;
     }
 
     @EventHandler
@@ -647,6 +678,12 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         item.subtract(1);
     }
 
+    @EventHandler
+    void onEntityChangeBlock(EntityChangeBlockEvent event) {
+        if (!isGameWorld(event.getBlock().getWorld())) return;
+        event.setCancelled(true);
+    }
+
     ItemStack hintEye(int amount) {
         ItemStack item = new ItemStack(Material.ENDER_EYE, amount);
         ItemMeta meta = item.getItemMeta();
@@ -700,13 +737,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                         EntityType.WOLF);
             type = types.get(random.nextInt(types.size()));
         }
-        player.getWorld().spawn(player.getLocation(), type.getEntityClass(), e -> {
+        Entity entity = player.getWorld().spawn(player.getLocation(), type.getEntityClass(), e -> {
                 e.setPersistent(false);
                 if (e instanceof LivingEntity) {
                     ((LivingEntity) e).setRemoveWhenFarAway(true);
                     ((LivingEntity) e).setSilent(true);
                 }
             });
+        distractions.add(entity);
     }
 
     void useInvisItem(Player player) {

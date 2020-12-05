@@ -20,6 +20,7 @@ commands:
     usage: |-
       /hideandseek setworld - Select current world (player only)
       /hideandseek start - Start a game
+      /hideandseek stop - Stop the game
       /hideandseek save - Save runtime
       /hideandseek load - (Re)load runtime
       /hideandseek fair - List player fairness
