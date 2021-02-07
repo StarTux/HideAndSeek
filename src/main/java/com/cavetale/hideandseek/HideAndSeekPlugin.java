@@ -65,6 +65,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     static final class Tag {
         String worldName;
         Map<UUID, Integer> fairness = new HashMap<>();
+        int gameTime = 60 * 5;
+        int hideTime = 30;
+        int glowTime = 30;
     }
 
     enum Phase {
@@ -151,6 +154,24 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         case "testdisguise": {
             disguise(player);
             sender.sendMessage("Player disguised");
+            return true;
+        }
+        case "gametime": {
+            tag.gameTime = Integer.parseInt(args[0]);
+            saveTag();
+            sender.sendMessage("Game time = " + tag.gameTime);
+            return true;
+        }
+        case "hidetime": {
+            tag.hideTime = Integer.parseInt(args[0]);
+            saveTag();
+            sender.sendMessage("Hide time = " + tag.hideTime);
+            return true;
+        }
+        case "glowtime": {
+            tag.glowTime = Integer.parseInt(args[0]);
+            saveTag();
+            sender.sendMessage("Glow time = " + tag.glowTime);
             return true;
         }
         default:
@@ -382,7 +403,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             }
             for (Player hider : getHiders()) {
                 if (ticks % 20 == 0) {
-                    if (getTimeLeft() < 30) {
+                    if (getTimeLeft() < tag.glowTime) {
                         hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false), true);
                     } else {
                         hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 1, true, false), true);
@@ -411,8 +432,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     int getTimeLeft() {
         switch (phase) {
-        case HIDE: return 30 - phaseTicks / 20;
-        case SEEK: return 5 * 60 - phaseTicks / 20;
+        case HIDE: return tag.hideTime - phaseTicks / 20;
+        case SEEK: return tag.gameTime - phaseTicks / 20;
         case END: return 30 - phaseTicks / 20;
         default: return 0;
         }
