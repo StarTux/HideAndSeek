@@ -244,8 +244,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             addFairness(seeker, 1);
             seeker.teleport(getSeekLocation());
             seeker.sendTitle(ChatColor.RED + "Wait!", ChatColor.RED + "You're a Seeker");
-            seeker.getInventory().addItem(hintEye(7));
-            seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 7));
+            seeker.getInventory().addItem(hintEye(3));
+            seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
         }
         setPhase(Phase.HIDE);
         return true;
