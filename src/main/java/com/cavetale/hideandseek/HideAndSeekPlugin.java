@@ -669,7 +669,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seeker.getInventory().addItem(hintEye(3));
         seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + seeker.getName());
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + seeker.getName() + " Seeker ");
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + seeker.getName() + " Seeker Detective");
         return true;
     }
 
