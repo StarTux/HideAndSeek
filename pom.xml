@@ -57,7 +57,6 @@
       <artifactId>paper-api</artifactId>
       <version>1.16.1-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
-      <optional>true</optional>
     </dependency>
 
     <!-- Lombok -->
@@ -65,17 +64,23 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>1.18.2</version>
-      <scope>compile</scope>
-      <optional>true</optional>
+      <scope>provided</scope>
     </dependency>
 
-    <!-- Lombok -->
+    <!-- Sidebar -->
     <dependency>
       <groupId>com.cavetale.sidebar</groupId>
       <artifactId>sidebar</artifactId>
       <version>0.1-SNAPSHOT</version>
       <scope>provided</scope>
-      <optional>true</optional>
+    </dependency>
+
+    <!-- Title -->
+    <dependency>
+      <groupId>com.winthier.title</groupId>
+      <artifactId>title</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>

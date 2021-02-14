@@ -2,6 +2,7 @@ package com.cavetale.hideandseek;
 
 import com.cavetale.sidebar.PlayerSidebarEvent;
 import com.cavetale.sidebar.Priority;
+import com.winthier.title.TitlePlugin;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,6 +24,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -59,7 +61,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     Random random = new Random();
     Tag tag;
     File tagFile;
-    Map<UUID, EntityType> disguises = new HashMap<>();
+    Map<UUID, Enum> disguises = new HashMap<>();
+    Map<UUID, Long> itemCooldown = new HashMap<>();
     Set<Entity> distractions = new HashSet<>();
 
     static final class Tag {
@@ -157,20 +160,26 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             return true;
         }
         case "gametime": {
-            tag.gameTime = Integer.parseInt(args[0]);
-            saveTag();
+            if (args.length == 1) {
+                tag.gameTime = Integer.parseInt(args[0]);
+                saveTag();
+            }
             sender.sendMessage("Game time = " + tag.gameTime);
             return true;
         }
         case "hidetime": {
-            tag.hideTime = Integer.parseInt(args[0]);
-            saveTag();
+            if (args.length == 1) {
+                tag.hideTime = Integer.parseInt(args[0]);
+                saveTag();
+            }
             sender.sendMessage("Hide time = " + tag.hideTime);
             return true;
         }
         case "glowtime": {
-            tag.glowTime = Integer.parseInt(args[0]);
-            saveTag();
+            if (args.length == 1) {
+                tag.glowTime = Integer.parseInt(args[0]);
+                saveTag();
+            }
             sender.sendMessage("Glow time = " + tag.glowTime);
             return true;
         }
@@ -221,21 +230,22 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             hider.teleport(getHideLocation());
             hider.sendTitle(ChatColor.GREEN + "Hide!",
                             ChatColor.GREEN + "You're a Hider");
-            if (disguises.get(hider.getUniqueId()) != null) {
+            if (disguises.get(hider.getUniqueId()) instanceof EntityType) {
                 hider.getInventory().addItem(summonWheat(1));
             }
-            hider.getInventory().addItem(rerollFoot(1 + random.nextInt(3)));
             if (random.nextBoolean()) {
+                hider.getInventory().addItem(copySlime(1));
+            } else {
+                hider.getInventory().addItem(rerollFoot(3));
                 hider.getInventory().addItem(makeInvisItem(1));
             }
         }
         for (Player seeker : getSeekers()) {
             addFairness(seeker, 1);
             seeker.teleport(getSeekLocation());
-            seeker.sendTitle(ChatColor.RED + "Wait!",
-                            ChatColor.RED + "You're a Seeker");
-            seeker.getInventory().addItem(hintEye(2 + random.nextInt(4)));
-            seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 4 + random.nextInt(5)));
+            seeker.sendTitle(ChatColor.RED + "Wait!", ChatColor.RED + "You're a Seeker");
+            seeker.getInventory().addItem(hintEye(7));
+            seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 7));
         }
         setPhase(Phase.HIDE);
         return true;
@@ -247,41 +257,96 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     EntityType.PIG, EntityType.BAT, EntityType.BOAT, EntityType.MINECART,
                     EntityType.SQUID, EntityType.BEE, EntityType.CAT, EntityType.WOLF,
                     EntityType.SNOWMAN, EntityType.RABBIT);
-        List<String> blocks = Arrays
-            .asList("falling_block grass_block",
-                    "falling_block dirt",
-                    "falling_block stone",
-                    "falling_block stone_bricks",
-                    "falling_block gold_block",
-                    "falling_block iron_block",
-                    "falling_block diamond_block",
-                    "falling_block hay_block",
-                    "falling_block glowstone",
-                    "falling_block oak_log",
-                    "falling_block oak_leaves",
-                    "falling_block cobblestone",
-                    "falling_block gold_ore",
-                    "falling_block diamond_ore",
-                    "falling_block iron_ore",
-                    "falling_block sand",
-                    "falling_block gravel",
-                    "falling_block snow_block"
+        List<Material> blocks = Arrays
+            .asList(Material.GRASS_BLOCK,
+                    Material.DIRT,
+                    Material.BRICKS,
+                    Material.STONE,
+                    Material.STONE_BRICKS,
+                    Material.GOLD_BLOCK,
+                    Material.IRON_BLOCK,
+                    Material.DIAMOND_BLOCK,
+                    Material.HAY_BLOCK,
+                    Material.GLOWSTONE,
+                    Material.OAK_LOG,
+                    Material.BIRCH_LOG,
+                    Material.OAK_LEAVES,
+                    Material.SPRUCE_LEAVES,
+                    Material.DARK_OAK_LEAVES,
+                    Material.COBBLESTONE,
+                    Material.GOLD_ORE,
+                    Material.DIAMOND_ORE,
+                    Material.IRON_ORE,
+                    Material.SAND,
+                    Material.GRAVEL,
+                    Material.SNOW_BLOCK,
+                    Material.FARMLAND,
+                    Material.SPRUCE_LOG,
+                    Material.COARSE_DIRT,
+                    Material.BOOKSHELF
                     );
+        Enum enume;
         if (random.nextBoolean()) {
-            String block = blocks.get(random.nextInt(blocks.size()));
-            consoleCommand("disguiseplayer " + player.getName() + " " + block);
-            player.setPlayerListName(ChatColor.GREEN + "[" + block.split(" ")[1].replace("_", " ") + "]" + player.getName());
+            enume = blocks.get(random.nextInt(blocks.size()));
         } else {
-            EntityType type = animals.get(random.nextInt(animals.size()));
-            disguises.put(player.getUniqueId(), type);
-            consoleCommand("disguiseplayer " + player.getName() + " " + type.name().toLowerCase());
-            player.setPlayerListName(ChatColor.GREEN + "[" + type.name().toLowerCase().replace("_", " ") + "]" + player.getName());
+            enume = animals.get(random.nextInt(animals.size()));
         }
+        disguise(player, enume);
+    }
+
+    void disguise(Player player, Enum enume) {
+        if (enume instanceof EntityType) {
+            disguises.put(player.getUniqueId(), enume);
+            EntityType type = (EntityType) enume;
+            consoleCommand("disguiseplayer " + player.getName() + " " + type.name().toLowerCase());
+            TitlePlugin.getInstance().setPlayerListPrefix(player, ChatColor.GREEN + "[" + entityName(type) + "]");
+        } else if (enume instanceof Material) {
+            disguises.put(player.getUniqueId(), enume);
+            Material material = (Material) enume;
+            consoleCommand("disguiseplayer " + player.getName() + " falling_block " + material.name().toLowerCase());
+            TitlePlugin.getInstance().setPlayerListPrefix(player, ChatColor.GREEN + "[" + blockName(material) + "]");
+        }
+    }
+
+    void redisguise(Player player) {
+        Enum enume = disguises.get(player.getUniqueId());
+        if (enume == null) {
+            disguise(player);
+        } else {
+            disguise(player, enume);
+        }
+    }
+
+    public static String toCamelCase(String in) {
+        return in.substring(0, 1).toUpperCase()
+            + in.substring(1).toLowerCase();
+    }
+
+    public static String toCamelCase(String[] in) {
+        String[] out = new String[in.length];
+        for (int i = 0; i < in.length; i += 1) {
+            out[i] = toCamelCase(in[i]);
+        }
+        return String.join(" ", out);
+    }
+
+    public static String toCamelCase(Enum en) {
+        return toCamelCase(en.name().split("_"));
+    }
+
+    String blockName(Material material) {
+        return material.isItem()
+            ? new ItemStack(material).getI18NDisplayName()
+            : toCamelCase(material);
+    }
+
+    String entityName(EntityType type) {
+        return toCamelCase(type);
     }
 
     void undisguise(Player player) {
         consoleCommand("undisguiseplayer " + player.getName());
-        player.setPlayerListName(null);
+        TitlePlugin.getInstance().setPlayerListPrefix(player, null);
     }
 
     List<Player> getHiders() {
@@ -317,7 +382,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             } else {
                 for (Player hider : getHiders()) {
                     addFairness(hider, 1);
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + hider.getName() + " Hider");
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + hider.getName() + " Hider Sneaky");
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + hider.getName());
                 }
                 for (Player player : getServer().getOnlinePlayers()) {
@@ -405,9 +470,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 if (ticks % 20 == 0) {
                     if (getTimeLeft() < tag.glowTime) {
                         hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false), true);
-                    } else {
-                        hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 1, true, false), true);
                     }
+                    hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 2, true, false), true);
+                }
+            }
+            if (ticks % 10 == 0) {
+                for (Player seeker : getSeekers()) {
+                    seeker.sendActionBar(getHint(seeker));
                 }
             }
             break;
@@ -439,23 +508,48 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    String getHint(Player player) {
+        Location loc = player.getLocation();
+        if (seekers.contains(player.getUniqueId())) {
+            double min = Double.MAX_VALUE;
+            for (Player hider : getHiders()) {
+                if (!hider.getWorld().equals(player.getWorld())) continue;
+                min = Math.min(min, hider.getLocation().distanceSquared(loc));
+            }
+            if (min < 16 * 16) {
+                return "" + ChatColor.GOLD + ChatColor.BOLD + "HOT";
+            } else if (min < 32 * 32) {
+                return "" + ChatColor.GOLD + ChatColor.ITALIC + "Warmer";
+            } else if (min < 48 * 48) {
+                return "" + ChatColor.YELLOW + ChatColor.ITALIC + "Warm";
+            } else {
+                return "" + ChatColor.AQUA + ChatColor.ITALIC + "Cold";
+            }
+        } else {
+            return "";
+        }
+    }
+
     @EventHandler
     void onPlayerSidebar(PlayerSidebarEvent event) {
+        Player player = event.getPlayer();
         String identity = "";
-        if (seekers.contains(event.getPlayer().getUniqueId())) {
+        if (seekers.contains(player.getUniqueId())) {
             identity = "" + ChatColor.GOLD + ChatColor.BOLD + "You're a Seeker!";
-        } else if (hiders.contains(event.getPlayer().getUniqueId())) {
+        } else if (hiders.contains(player.getUniqueId())) {
             identity = "" + ChatColor.GOLD + ChatColor.BOLD + "You're a Hider!";
         } else {
             identity = "" + ChatColor.GOLD + ChatColor.BOLD + "You were found!";
         }
         switch (phase) {
         case IDLE: return;
-        case HIDE:
+        case HIDE: {
+            int timeLeft = getTimeLeft();
+            int minutes = timeLeft / 60;
+            int seconds = timeLeft % 60;
             event.addLines(this, Priority.DEFAULT,
                            identity,
-                           ChatColor.DARK_GREEN + "Hiding...",
-                           ChatColor.WHITE + "  " + getTimeLeft());
+                           ChatColor.DARK_GREEN + "Hiding " + ChatColor.WHITE + String.format("%02d:%02d", minutes, seconds));
             for (Player seeker : getSeekers()) {
                 if (seeker.getLocation().distance(getSeekLocation()) > 4.0) {
                     Location ploc = seeker.getLocation();
@@ -467,34 +561,20 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 }
             }
             break;
+        }
         case SEEK: {
-            String hint = "";
-            Player player = event.getPlayer();
-            Location loc = player.getLocation();
+            int timeLeft = getTimeLeft();
+            int minutes = timeLeft / 60;
+            int seconds = timeLeft % 60;
+            List<String> lines = new ArrayList<>();
+            lines.add(identity);
+            lines.add(ChatColor.GREEN + "Seeking " + ChatColor.WHITE + String.format("%02d:%02d", minutes, seconds));
+            lines.add(ChatColor.GRAY + "Seekers: " + ChatColor.WHITE + seekers.size());
+            lines.add(ChatColor.GRAY + "Hiders: " + ChatColor.WHITE + hiders.size());
             if (seekers.contains(player.getUniqueId())) {
-                double min = Double.MAX_VALUE;
-                for (Player hider : getHiders()) {
-                    if (!hider.getWorld().equals(player.getWorld())) continue;
-                    min = Math.min(min, hider.getLocation().distanceSquared(loc));
-                }
-                if (min < 16 * 16) {
-                    hint = "" + ((ticks % 2) == 0 ? ChatColor.DARK_RED : ChatColor.GOLD) + ChatColor.BOLD + "HOT";
-                } else if (min < 32 * 32) {
-                    hint = "" + ChatColor.GOLD + ChatColor.ITALIC + "Warmer";
-                } else if (min < 48 * 48) {
-                    hint = "" + ChatColor.YELLOW + ChatColor.ITALIC + "Warm";
-                } else {
-                    hint = "" + ChatColor.AQUA + ChatColor.ITALIC + "Cold";
-                }
-                hint = ChatColor.GRAY + "Hint: " + hint;
+                lines.add(ChatColor.GRAY + "Hint: " + getHint(player));
             }
-            event.addLines(this, Priority.DEFAULT,
-                           identity,
-                           ChatColor.GREEN + "Seeking...",
-                           ChatColor.WHITE + "  " + getTimeLeft(),
-                           ChatColor.GRAY + "Seekers: " + ChatColor.WHITE + seekers.size(),
-                           ChatColor.GRAY + "Hiders: " + ChatColor.WHITE + hiders.size(),
-                           hint);
+            event.addLines(this, Priority.DEFAULT, lines);
             break;
         }
         case END:
@@ -586,9 +666,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                              ChatColor.GREEN + seeker.getName() + " discovered " + hider.getName() + "!");
             target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.2f, 2.0f);
         }
-        seeker.getInventory().addItem(hintEye(1));
+        seeker.getInventory().addItem(hintEye(3));
+        seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + seeker.getName());
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + seeker.getName() + " Seeker");
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + seeker.getName() + " Seeker ");
         return true;
     }
 
@@ -653,34 +734,46 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (event.getHand() != EquipmentSlot.HAND) return;
         if (!event.hasItem()) return;
         ItemStack item = event.getItem();
+        Block block = event.hasBlock() ? event.getClickedBlock() : null;
         if (item == null) return;
+        Long cooldown = itemCooldown.get(player.getUniqueId());
+        long now = System.currentTimeMillis();
+        long then = now + 1000;
+        if (cooldown != null && cooldown > now) return;
         switch (item.getType()) {
         case ENDER_EYE: {
             if (phase != Phase.SEEK) {
-                event.setCancelled(true);
                 return;
             }
+            itemCooldown.put(player.getUniqueId(), then);
             player.sendMessage(ChatColor.GREEN + "All hiders are meowing...");
             player.sendActionBar(ChatColor.GREEN + "All hiders are meowing...");
             hint();
             break;
         }
         case WHEAT: {
+            event.setCancelled(true);
             if (phase != Phase.SEEK) {
-                event.setCancelled(true);
-                return;
-            }
-            summonDistraction(player);
-            player.sendMessage(ChatColor.GREEN + "Summoning a distraction...");
-            player.sendActionBar(ChatColor.GREEN + "Summoning a distraction...");
-            break;
-        }
-        case RABBIT_FOOT:
-            if (phase != Phase.SEEK && phase != Phase.HIDE) {
-                event.setCancelled(true);
                 return;
             }
             if (hiders.contains(player.getUniqueId())) {
+                summonDistraction(player);
+                itemCooldown.put(player.getUniqueId(), then);
+                player.sendMessage(ChatColor.GREEN + "Summoning a distraction...");
+                player.sendActionBar(ChatColor.GREEN + "Summoning a distraction...");
+            } else {
+                player.sendMessage(ChatColor.RED + "You're not hiding!");
+                player.sendActionBar(ChatColor.RED + "You're not hiding!");
+            }
+            break;
+        }
+        case RABBIT_FOOT:
+            event.setCancelled(true);
+            if (phase != Phase.SEEK && phase != Phase.HIDE) {
+                return;
+            }
+            if (hiders.contains(player.getUniqueId())) {
+                itemCooldown.put(player.getUniqueId(), then);
                 player.sendMessage(ChatColor.GREEN + "Rerolling disguise...");
                 player.sendActionBar(ChatColor.GREEN + "Rerolling disguise...");
                 undisguise(player);
@@ -690,7 +783,39 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 player.sendActionBar(ChatColor.RED + "You're not hiding!");
             }
             break;
+        case SLIME_BALL:
+            event.setCancelled(true);
+            if (phase != Phase.SEEK && phase != Phase.HIDE) {
+                return;
+            }
+            if (hiders.contains(player.getUniqueId())) {
+                if (block == null) {
+                    return;
+                }
+                if (block.isEmpty() || block.isLiquid()) {
+                    return;
+                }
+                Material material = block.getType();
+                switch (material) {
+                case BARRIER: return;
+                default: break;
+                }
+                itemCooldown.put(player.getUniqueId(), then);
+                player.sendMessage(ChatColor.GREEN + "Disguising as " + blockName(material));
+                player.sendActionBar(ChatColor.GREEN + "Disguising as " + blockName(material));
+                undisguise(player);
+                disguise(player, material);
+            } else {
+                player.sendMessage(ChatColor.RED + "You're not hiding!");
+                player.sendActionBar(ChatColor.RED + "You're not hiding!");
+            }
+            break;
         case GLASS:
+            event.setCancelled(true);
+            if (phase != Phase.SEEK) {
+                return;
+            }
+            itemCooldown.put(player.getUniqueId(), then);
             useInvisItem(player);
             break;
         default: return;
@@ -735,6 +860,16 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         return item;
     }
 
+    ItemStack copySlime(int amount) {
+        ItemStack item = new ItemStack(Material.SLIME_BALL, amount);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(ChatColor.GREEN + "Copy slime");
+        meta.setLore(Arrays.asList(ChatColor.GRAY + "Disguise as a certain block",
+                                   ChatColor.GREEN + "Right-Click " + ChatColor.GRAY + " to use"));
+        item.setItemMeta(meta);
+        return item;
+    }
+
     ItemStack makeInvisItem(int amount) {
         ItemStack item = new ItemStack(Material.GLASS, amount);
         ItemMeta meta = item.getItemMeta();
@@ -746,8 +881,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     void summonDistraction(Player player) {
-        EntityType type = disguises.get(player.getUniqueId());
-        if (type == null) {
+        Enum enume = disguises.get(player.getUniqueId());
+        EntityType type;
+        if (enume instanceof EntityType) {
+            type = (EntityType) enume;
+        } else {
             List<EntityType> types = Arrays
                 .asList(EntityType.BEE,
                         EntityType.COW,
@@ -777,7 +915,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 200, 1, true, false), true);
         getServer().getScheduler().runTaskLater(this, () -> {
                 if (player.isValid() && hiders.contains(player.getUniqueId())) {
-                    disguise(player);
+                    redisguise(player);
                 }
             }, 200L);
         player.sendMessage(ChatColor.AQUA + "Invisible for 10 seconds! GOGOGO");
