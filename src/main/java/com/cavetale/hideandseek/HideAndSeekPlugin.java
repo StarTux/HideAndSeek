@@ -662,8 +662,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         addFairness(seeker, 1);
         for (Player target : getServer().getOnlinePlayers()) {
             target.sendMessage(ChatColor.GREEN + seeker.getName() + " discovered " + hider.getName() + "!");
-            target.sendTitle(ChatColor.GREEN + "Found",
-                             ChatColor.GREEN + seeker.getName() + " discovered " + hider.getName() + "!");
+            target.sendTitle("", ChatColor.GREEN + seeker.getName() + " discovered " + hider.getName() + "!");
             target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.2f, 2.0f);
         }
         seeker.getInventory().addItem(hintEye(3));
