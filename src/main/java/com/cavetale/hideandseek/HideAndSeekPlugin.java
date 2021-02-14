@@ -797,7 +797,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 }
                 Material material = block.getType();
                 switch (material) {
-                case BARRIER: return;
+                case BARRIER:
+                case CHEST:
+                case TRAPPED_CHEST:
+                case ENDER_CHEST:
+                    return;
                 default: break;
                 }
                 itemCooldown.put(player.getUniqueId(), then);
