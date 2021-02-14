@@ -516,9 +516,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 if (!hider.getWorld().equals(player.getWorld())) continue;
                 min = Math.min(min, hider.getLocation().distanceSquared(loc));
             }
-            if (min < 16 * 16) {
+            if (min < 12 * 12) {
                 return "" + ChatColor.GOLD + ChatColor.BOLD + "HOT";
-            } else if (min < 32 * 32) {
+            } else if (min < 24 * 24) {
                 return "" + ChatColor.GOLD + ChatColor.ITALIC + "Warmer";
             } else if (min < 48 * 48) {
                 return "" + ChatColor.YELLOW + ChatColor.ITALIC + "Warm";
