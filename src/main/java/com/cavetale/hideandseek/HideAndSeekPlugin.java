@@ -800,6 +800,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 case CHEST:
                 case TRAPPED_CHEST:
                 case ENDER_CHEST:
+                case LADDER:
+                case VINE:
                     return;
                 default: break;
                 }
