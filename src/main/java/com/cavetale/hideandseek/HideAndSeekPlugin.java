@@ -721,6 +721,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     @EventHandler
     void onPlayerInteractItem(PlayerInteractEvent event) {
         if (!isGameWorld(event.getPlayer().getWorld())) return;
+        if (event.hasBlock()) {
+            switch (event.getClickedBlock().getType()) {
+            case FARMLAND:
+            case FLOWER_POT:
+                event.setCancelled(true);
+                break;
+            }
+        }
         switch (event.getAction()) {
         case RIGHT_CLICK_BLOCK:
         case RIGHT_CLICK_AIR:
