@@ -16,6 +16,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -299,12 +301,12 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             disguises.put(player.getUniqueId(), enume);
             EntityType type = (EntityType) enume;
             consoleCommand("disguiseplayer " + player.getName() + " " + type.name().toLowerCase());
-            TitlePlugin.getInstance().setPlayerListPrefix(player, ChatColor.GREEN + "[" + entityName(type) + "]");
+            TitlePlugin.getInstance().setPlayerListPrefix(player, Component.text("[" + entityName(type) + "]", NamedTextColor.GREEN));
         } else if (enume instanceof Material) {
             disguises.put(player.getUniqueId(), enume);
             Material material = (Material) enume;
             consoleCommand("disguiseplayer " + player.getName() + " falling_block " + material.name().toLowerCase());
-            TitlePlugin.getInstance().setPlayerListPrefix(player, ChatColor.GREEN + "[" + blockName(material) + "]");
+            TitlePlugin.getInstance().setPlayerListPrefix(player, Component.text("[" + blockName(material) + "]", NamedTextColor.GREEN));
         }
     }
 
@@ -346,7 +348,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     void undisguise(Player player) {
         consoleCommand("undisguiseplayer " + player.getName());
-        TitlePlugin.getInstance().setPlayerListPrefix(player, null);
+        TitlePlugin.getInstance().setPlayerListPrefix(player, (Component) null);
     }
 
     List<Player> getHiders() {
