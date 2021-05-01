@@ -1,5 +1,6 @@
 package com.cavetale.hideandseek;
 
+import com.cavetale.afk.AFKPlugin;
 import com.cavetale.sidebar.PlayerSidebarEvent;
 import com.cavetale.sidebar.Priority;
 import com.winthier.title.TitlePlugin;
@@ -208,6 +209,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     boolean startGame() {
         List<Player> players = getServer().getOnlinePlayers().stream()
             .filter(p -> p.getGameMode() != GameMode.SPECTATOR)
+            .filter(p -> !AFKPlugin.isAfk(p))
             .collect(Collectors.toList());
         Collections.shuffle(players);
         Collections.sort(players, (a, b) -> Integer.compare(getFairness(b), getFairness(a)));
@@ -461,10 +463,16 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             break;
         case SEEK:
             if (getTimeLeft() <= 0) {
+                for (Player hider : getHiders()) {
+                    undisguise(hider);
+                }
                 setPhase(Phase.END);
                 return;
             }
             if (hiders.isEmpty()) {
+                for (Player hider : getHiders()) {
+                    undisguise(hider);
+                }
                 setPhase(Phase.END);
                 return;
             }
@@ -728,7 +736,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             case FARMLAND:
             case FLOWER_POT:
                 event.setCancelled(true);
-                break;
+            default: break;
             }
         }
         switch (event.getAction()) {
