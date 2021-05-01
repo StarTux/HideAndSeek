@@ -50,6 +50,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -299,6 +300,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     void disguise(Player player, Enum enume) {
+        player.setMetadata("nostream", new FixedMetadataValue(this, true));
         if (enume instanceof EntityType) {
             disguises.put(player.getUniqueId(), enume);
             EntityType type = (EntityType) enume;
@@ -349,6 +351,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     void undisguise(Player player) {
+        player.removeMetadata("nostream", this);
         consoleCommand("undisguiseplayer " + player.getName());
         TitlePlugin.getInstance().setPlayerListPrefix(player, (Component) null);
     }
