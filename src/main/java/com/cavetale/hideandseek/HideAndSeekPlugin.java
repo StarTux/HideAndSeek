@@ -194,6 +194,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     void stopGame() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.getInventory().clear();
+        }
         disguises.clear();
         for (Player hider : getHiders()) {
             undisguise(hider);
@@ -208,7 +211,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     boolean startGame() {
-        List<Player> players = getServer().getOnlinePlayers().stream()
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.getInventory().clear();
+        }
+        List<Player> players = Bukkit.getOnlinePlayers().stream()
             .filter(p -> p.getGameMode() != GameMode.SPECTATOR)
             .filter(p -> !AFKPlugin.isAfk(p))
             .collect(Collectors.toList());
