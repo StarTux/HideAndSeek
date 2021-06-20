@@ -40,6 +40,8 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -952,5 +954,19 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             }, 200L);
         player.sendMessage(ChatColor.AQUA + "Invisible for 10 seconds! GOGOGO");
         player.sendActionBar(ChatColor.AQUA + "Invisible for 10 seconds! GOGOGO");
+    }
+
+    @EventHandler
+    public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
+        if (!isGameWorld(event.getEntity().getWorld())) return;
+        if (event.getRemover() instanceof Player && ((Player) event.getRemover()).isOp()) return;
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onHangingPlace(HangingPlaceEvent event) {
+        if (!isGameWorld(event.getEntity().getWorld())) return;
+        if (event.getPlayer().isOp()) return;
+        event.setCancelled(true);
     }
 }
