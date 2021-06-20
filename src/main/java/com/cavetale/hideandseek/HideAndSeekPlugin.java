@@ -832,7 +832,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 case LADDER:
                 case VINE:
                     return;
-                default: break;
+                default:
+                    if (org.bukkit.Tag.BUTTONS.isTagged(material)) return;
+                    break;
                 }
                 itemCooldown.put(player.getUniqueId(), then);
                 player.sendMessage(ChatColor.GREEN + "Disguising as " + blockName(material));
