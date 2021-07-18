@@ -268,7 +268,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         List<EntityType> animals = Arrays
             .asList(EntityType.COW, EntityType.CHICKEN,
                     EntityType.SHEEP, EntityType.PIG, EntityType.BAT,
-                    EntityType.BOAT, EntityType.MINECART,
                     EntityType.GLOW_SQUID, EntityType.BEE,
                     EntityType.CAT, EntityType.WOLF,
                     EntityType.SNOWMAN, EntityType.RABBIT,
@@ -931,7 +930,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                         EntityType.COW,
                         EntityType.SHEEP,
                         EntityType.PIG,
-                        EntityType.BOAT,
                         EntityType.CAT,
                         EntityType.WOLF);
             type = types.get(random.nextInt(types.size()));
