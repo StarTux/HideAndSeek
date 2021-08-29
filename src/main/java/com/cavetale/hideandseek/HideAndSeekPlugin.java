@@ -40,6 +40,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
@@ -972,5 +973,21 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (!isGameWorld(event.getEntity().getWorld())) return;
         if (event.getPlayer().isOp()) return;
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    void onEntityDamage(EntityDamageEvent event) {
+        if (phase != Phase.HIDE && phase != Phase.SEEK) return;
+        if (!isGameWorld(event.getEntity().getWorld())) return;
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        if (!hiders.contains(player.getUniqueId())) return;
+        switch (event.getCause()) {
+        case DROWNING:
+        case FALL:
+        case FIRE:
+            player.teleport(getHideLocation());
+        default: break;
+        }
     }
 }
