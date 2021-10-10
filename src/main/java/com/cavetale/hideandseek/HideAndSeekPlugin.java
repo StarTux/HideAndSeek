@@ -3,6 +3,7 @@ package com.cavetale.hideandseek;
 import com.cavetale.afk.AFKPlugin;
 import com.cavetale.sidebar.PlayerSidebarEvent;
 import com.cavetale.sidebar.Priority;
+import com.destroystokyo.paper.MaterialTags;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
 import java.util.ArrayList;
@@ -18,9 +19,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -70,6 +74,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     File tagFile;
     Map<UUID, Enum> disguises = new HashMap<>();
     Map<UUID, Long> itemCooldown = new HashMap<>();
+    Map<UUID, Component> hiderPrefixMap = new HashMap<>();
     Set<Entity> distractions = new HashSet<>();
 
     static final class Tag {
@@ -78,6 +83,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         int gameTime = 60 * 5;
         int hideTime = 30;
         int glowTime = 30;
+        boolean event;
     }
 
     enum Phase {
@@ -190,6 +196,20 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             sender.sendMessage("Glow time = " + tag.glowTime);
             return true;
         }
+        case "event": {
+            if (args.length > 1) return false;
+            if (args.length >= 1) {
+                try {
+                    tag.event = Boolean.parseBoolean(args[0]);
+                } catch (IllegalArgumentException iae) {
+                    sender.sendMessage("Boolean expected: " + args[0]);
+                    return true;
+                }
+                saveTag();
+            }
+            sender.sendMessage("Event mode = " + tag.event);
+            return true;
+        }
         default:
             sender.sendMessage("Unknown subcommand: " + cmd);
             return true;
@@ -225,6 +245,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         Collections.sort(players, (a, b) -> Integer.compare(getFairness(b), getFairness(a)));
         int half = players.size() <= 2 ? 1 : players.size() / 2 + 1;
         hiders.clear();
+        hiderPrefixMap.clear();
         seekers.clear();
         for (int i = 0; i < players.size(); i += 1) {
             Player player = players.get(i);
@@ -242,8 +263,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             addFairness(hider, -2);
             disguise(hider);
             hider.teleport(getHideLocation());
-            hider.sendTitle(ChatColor.GREEN + "Hide!",
-                            ChatColor.GREEN + "You're a Hider");
+            hider.showTitle(Title.title(Component.text("Hide!", NamedTextColor.GREEN),
+                                        Component.text("You're a Hider", NamedTextColor.GREEN)));
             if (disguises.get(hider.getUniqueId()) instanceof EntityType) {
                 hider.getInventory().addItem(summonWheat(1));
             }
@@ -257,12 +278,18 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         for (Player seeker : getSeekers()) {
             addFairness(seeker, 1);
             seeker.teleport(getSeekLocation());
-            seeker.sendTitle(ChatColor.RED + "Wait!", ChatColor.RED + "You're a Seeker");
-            seeker.getInventory().addItem(hintEye(3));
-            seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
+            seeker.showTitle(Title.title(Component.text("Wait!", NamedTextColor.RED),
+                                         Component.text("You're a Seeker", NamedTextColor.RED)));
+            giveSeekerItems(seeker);
         }
         setPhase(Phase.HIDE);
         return true;
+    }
+
+    protected void giveSeekerItems(Player seeker) {
+        seeker.getInventory().addItem(makeCompass(1));
+        seeker.getInventory().addItem(hintEye(3));
+        seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
     }
 
     void disguise(Player player) {
@@ -316,12 +343,16 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             disguises.put(player.getUniqueId(), enume);
             EntityType type = (EntityType) enume;
             consoleCommand("disguiseplayer " + player.getName() + " " + type.name().toLowerCase());
-            TitlePlugin.getInstance().setPlayerListPrefix(player, Component.text("[" + entityName(type) + "]", NamedTextColor.GREEN));
+            Component prefix = Component.text("[" + entityName(type) + "]", NamedTextColor.GREEN);
+            hiderPrefixMap.put(player.getUniqueId(), prefix);
+            TitlePlugin.getInstance().setPlayerListPrefix(player, prefix);
         } else if (enume instanceof Material) {
             disguises.put(player.getUniqueId(), enume);
             Material material = (Material) enume;
             consoleCommand("disguiseplayer " + player.getName() + " falling_block " + material.name().toLowerCase());
-            TitlePlugin.getInstance().setPlayerListPrefix(player, Component.text("[" + blockName(material) + "]", NamedTextColor.GREEN));
+            Component prefix = Component.text("[" + blockName(material) + "]", NamedTextColor.GREEN);
+            hiderPrefixMap.put(player.getUniqueId(), prefix);
+            TitlePlugin.getInstance().setPlayerListPrefix(player, prefix);
         }
     }
 
@@ -400,8 +431,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             } else {
                 for (Player hider : getHiders()) {
                     addFairness(hider, 1);
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + hider.getName() + " Hider Sneaky");
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + hider.getName());
+                    if (tag.event) {
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + hider.getName() + " Hider Sneaky");
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + hider.getName());
+                    }
                 }
                 for (Player player : getServer().getOnlinePlayers()) {
                     player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 0.125f, 2.0f);
@@ -467,6 +500,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             player.setHealth(20.0);
             player.setFoodLevel(20);
             player.setSaturation(20.0f);
+            player.setRemainingAir(player.getMaximumAir());
+            player.setFireTicks(0);
         }
         switch (phase) {
         case HIDE:
@@ -495,13 +530,12 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     if (getTimeLeft() < tag.glowTime) {
                         hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false), true);
                     }
-                    hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 2, true, false), true);
+                    hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 3, true, false), true);
                 }
             }
-            if (ticks % 10 == 0) {
-                for (Player seeker : getSeekers()) {
-                    seeker.sendActionBar(getHint(seeker));
-                }
+            for (Player seeker : getSeekers()) {
+                seeker.sendActionBar(getHint(seeker));
+                updateCompassTarget(seeker);
             }
             break;
         case END:
@@ -532,38 +566,65 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    String getHint(Player player) {
+    protected Component getHint(Player player) {
         Location loc = player.getLocation();
-        if (seekers.contains(player.getUniqueId())) {
-            double min = Double.MAX_VALUE;
-            for (Player hider : getHiders()) {
-                if (!hider.getWorld().equals(player.getWorld())) continue;
-                min = Math.min(min, hider.getLocation().distanceSquared(loc));
-            }
-            if (min < 12 * 12) {
-                return "" + ChatColor.GOLD + ChatColor.BOLD + "HOT";
-            } else if (min < 24 * 24) {
-                return "" + ChatColor.GOLD + ChatColor.ITALIC + "Warmer";
-            } else if (min < 48 * 48) {
-                return "" + ChatColor.YELLOW + ChatColor.ITALIC + "Warm";
-            } else {
-                return "" + ChatColor.AQUA + ChatColor.ITALIC + "Cold";
-            }
-        } else {
-            return "";
+        if (!seekers.contains(player.getUniqueId())) return Component.empty();
+        double min = Double.MAX_VALUE;
+        for (Player hider : getHiders()) {
+            if (!hider.getWorld().equals(player.getWorld())) continue;
+            min = Math.min(min, hider.getLocation().distanceSquared(loc));
         }
+        if (min < 12 * 12) {
+            return Component.text("HOT", (ticks % 4 == 2 ? NamedTextColor.GOLD : NamedTextColor.AQUA), TextDecoration.BOLD);
+        } else if (min < 24 * 24) {
+            return Component.text("Warmer", NamedTextColor.GOLD);
+        } else if (min < 48 * 48) {
+            return Component.text("Warm", NamedTextColor.YELLOW);
+        } else {
+            return Component.text("Cold", NamedTextColor.AQUA);
+        }
+    }
+
+    protected void updateCompassTarget(Player seeker) {
+        if (!seekers.contains(seeker.getUniqueId())) return;
+        double min = Double.MAX_VALUE;
+        Location loc = seeker.getLocation();
+        Location target = null;
+        for (Player hider : getHiders()) {
+            if (!hider.getWorld().equals(seeker.getWorld())) continue;
+            Location hiderLoc = hider.getLocation();
+            double dist = hiderLoc.distanceSquared(loc);
+            if (dist < min) {
+                min = dist;
+                target = hiderLoc;
+            }
+        }
+        final int minDistance = 32;
+        if (target == null || min < (minDistance * minDistance)) {
+            // Spin in circles
+            double fraction = ((double) (ticks % 50)) / 50.0;
+            double dx = 32.0 * Math.cos(fraction * Math.PI * 2.0);
+            double dz = 32.0 * Math.sin(fraction * Math.PI * 2.0);
+            seeker.setCompassTarget(loc.add(dx, 0.0, dz));
+            return;
+        }
+        Location targetLoc = new Location(seeker.getWorld(),
+                                          (double) (((target.getBlockX() / minDistance) * minDistance) + (minDistance / 2)),
+                                          loc.getBlockY(),
+                                          (double) (((target.getBlockZ() / minDistance) * minDistance) + (minDistance / 2)));
+        seeker.setCompassTarget(targetLoc);
     }
 
     @EventHandler
     void onPlayerSidebar(PlayerSidebarEvent event) {
         Player player = event.getPlayer();
-        String identity = "";
+        Component identity = Component.empty();
         if (seekers.contains(player.getUniqueId())) {
-            identity = "" + ChatColor.GOLD + ChatColor.BOLD + "You're a Seeker!";
+            identity = Component.text("You're a Seeker!", NamedTextColor.GOLD);
         } else if (hiders.contains(player.getUniqueId())) {
-            identity = "" + ChatColor.GOLD + ChatColor.BOLD + "You're a Hider!";
+            identity = Component.text("You're a Hider!", NamedTextColor.LIGHT_PURPLE);
         } else {
-            identity = "" + ChatColor.GOLD + ChatColor.BOLD + "You were found!";
+            identity = Component.text("You were found!", NamedTextColor.GRAY);
         }
         switch (phase) {
         case IDLE: return;
@@ -571,9 +632,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             int timeLeft = getTimeLeft();
             int minutes = timeLeft / 60;
             int seconds = timeLeft % 60;
-            event.addLines(this, Priority.DEFAULT,
-                           identity,
-                           ChatColor.DARK_GREEN + "Hiding " + ChatColor.WHITE + String.format("%02d:%02d", minutes, seconds));
+            event.add(this, Priority.HIGHEST,
+                      identity,
+                      Component.text("Hiding ", NamedTextColor.LIGHT_PURPLE)
+                      .append(Component.text(String.format("%02d:%02d", minutes, seconds), NamedTextColor.WHITE)));
             for (Player seeker : getSeekers()) {
                 if (seeker.getLocation().distance(getSeekLocation()) > 4.0) {
                     Location ploc = seeker.getLocation();
@@ -590,24 +652,33 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             int timeLeft = getTimeLeft();
             int minutes = timeLeft / 60;
             int seconds = timeLeft % 60;
-            List<String> lines = new ArrayList<>();
+            List<Component> lines = new ArrayList<>();
             lines.add(identity);
-            lines.add(ChatColor.GREEN + "Seeking " + ChatColor.WHITE + String.format("%02d:%02d", minutes, seconds));
-            lines.add(ChatColor.GRAY + "Seekers: " + ChatColor.WHITE + seekers.size());
-            lines.add(ChatColor.GRAY + "Hiders: " + ChatColor.WHITE + hiders.size());
             if (seekers.contains(player.getUniqueId())) {
-                lines.add(ChatColor.GRAY + "Hint: " + getHint(player));
+                lines.add(Component.text("Hint: ", NamedTextColor.GRAY)
+                          .append(getHint(player)));
             }
-            event.addLines(this, Priority.DEFAULT, lines);
+            lines.add(Component.text("Seeking ", NamedTextColor.GRAY)
+                      .append(Component.text(String.format("%02d:%02d", minutes, seconds), NamedTextColor.WHITE)));
+            lines.add(Component.text("Seekers: ", NamedTextColor.GRAY)
+                      .append(Component.text(seekers.size(), NamedTextColor.WHITE)));
+            lines.add(Component.text("Hiders: ", NamedTextColor.GRAY)
+                      .append(Component.text(hiders.size(), NamedTextColor.WHITE)));
+            List<Player> hiderList = getHiders();
+            Collections.sort(hiderList, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+            for (Player hider : hiderList) {
+                lines.add(Component.join(JoinConfiguration.noSeparators(),
+                                         hiderPrefixMap.computeIfAbsent(hider.getUniqueId(), u -> Component.empty()),
+                                         hider.displayName()));
+            }
+            event.add(this, Priority.HIGHEST, lines);
             break;
         }
         case END:
             if (hiders.isEmpty()) {
-                event.addLines(this, Priority.DEFAULT,
-                               "" + ChatColor.GREEN + ChatColor.BOLD + "Seekers Win!!!");
+                event.add(this, Priority.HIGHEST, Component.text("Seekers Win!!!", NamedTextColor.GOLD));
             } else {
-                event.addLines(this, Priority.DEFAULT,
-                               "" + ChatColor.GREEN + ChatColor.BOLD + "Hiders Win!!!");
+                event.add(this, Priority.HIGHEST, Component.text("Hiders Win!!!", NamedTextColor.LIGHT_PURPLE));
             }
             break;
         default:
@@ -683,6 +754,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         undisguise(hider);
         hiders.remove(hider.getUniqueId());
         seekers.add(hider.getUniqueId());
+        giveSeekerItems(hider);
         addFairness(seeker, 1);
         for (Player target : getServer().getOnlinePlayers()) {
             target.sendMessage(ChatColor.GREEN + seeker.getName() + " discovered " + hider.getName() + "!");
@@ -691,8 +763,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
         seeker.getInventory().addItem(hintEye(3));
         seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + seeker.getName());
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + seeker.getName() + " Seeker Detective");
+        if (tag.event) {
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + seeker.getName());
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + seeker.getName() + " Seeker Detective");
+        }
         return true;
     }
 
@@ -834,10 +908,12 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 case ENDER_CHEST:
                 case LADDER:
                 case VINE:
+                case PLAYER_HEAD:
                     return;
                 default:
                     if (org.bukkit.Tag.BUTTONS.isTagged(material)) return;
                     if (org.bukkit.Tag.SIGNS.isTagged(material)) return;
+                    if (MaterialTags.SKULLS.isTagged(material)) return;
                     break;
                 }
                 itemCooldown.put(player.getUniqueId(), then);
@@ -920,6 +996,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         return item;
     }
 
+    ItemStack makeCompass(int amount) {
+        return Items.text(new ItemStack(Material.COMPASS, amount),
+                          List.of(Component.text("Hider Finder", NamedTextColor.GOLD),
+                                  Component.text("Points to the nearest", NamedTextColor.GRAY),
+                                  Component.text("hider but goes wild", NamedTextColor.GRAY),
+                                  Component.text("when you're too close", NamedTextColor.GRAY)));
+    }
+
     void summonDistraction(Player player) {
         Enum enume = disguises.get(player.getUniqueId());
         EntityType type;
@@ -979,15 +1063,22 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     void onEntityDamage(EntityDamageEvent event) {
         if (phase != Phase.HIDE && phase != Phase.SEEK) return;
         if (!isGameWorld(event.getEntity().getWorld())) return;
+        event.setCancelled(true);
         if (!(event.getEntity() instanceof Player)) return;
         Player player = (Player) event.getEntity();
         if (!hiders.contains(player.getUniqueId())) return;
         switch (event.getCause()) {
-        case DROWNING:
         case FALL:
+        case DROWNING:
+            return;
         case FIRE:
+        case LAVA:
+            player.setFireTicks(0);
+            player.sendMessage(Component.text("Taking damage returns you to spawn!",
+                                              NamedTextColor.RED));
             player.teleport(getHideLocation());
-        default: break;
+        default:
+            break;
         }
     }
 }
