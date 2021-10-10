@@ -49,6 +49,7 @@ import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -255,7 +256,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             } else {
                 seekers.add(player.getUniqueId());
             }
-            consoleCommand("ml add " + player.getName());
             player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 0.125f, 2.0f);
             player.getInventory().clear();
         }
@@ -1074,11 +1074,21 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         case FIRE:
         case LAVA:
             player.setFireTicks(0);
-            player.sendMessage(Component.text("Taking damage returns you to spawn!",
+            player.sendMessage(Component.text("Burning returns you to spawn!",
                                               NamedTextColor.RED));
             player.teleport(getHideLocation());
         default:
             break;
         }
+    }
+
+    @EventHandler
+    void onPlayerDropItem(PlayerDropItemEvent event) {
+        if (phase != Phase.HIDE && phase != Phase.SEEK) return;
+        Player player = event.getPlayer();
+        if (!isGameWorld(player.getWorld())) return;
+        if (player.getGameMode() == GameMode.CREATIVE) return;
+        player.sendMessage(Component.text("Item dropping not allowed!", NamedTextColor.RED));
+        event.setCancelled(true);
     }
 }
