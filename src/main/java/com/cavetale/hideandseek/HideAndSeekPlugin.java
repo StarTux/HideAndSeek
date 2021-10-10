@@ -1086,7 +1086,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     void onPlayerDropItem(PlayerDropItemEvent event) {
-        if (phase != Phase.HIDE && phase != Phase.SEEK) return;
         Player player = event.getPlayer();
         if (!isGameWorld(player.getWorld())) return;
         if (player.getGameMode() == GameMode.CREATIVE) return;
