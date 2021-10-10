@@ -1073,10 +1073,12 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             return;
         case FIRE:
         case LAVA:
-            player.setFireTicks(0);
-            player.sendMessage(Component.text("Burning returns you to spawn!",
-                                              NamedTextColor.RED));
-            player.teleport(getHideLocation());
+            Bukkit.getScheduler().runTask(this, () -> {
+                    player.setFireTicks(0);
+                    player.sendMessage(Component.text("Burning returns you to spawn!",
+                                                      NamedTextColor.RED));
+                    player.teleport(getHideLocation());
+                });
         default:
             break;
         }
