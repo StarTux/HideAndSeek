@@ -569,7 +569,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     protected Component getHint(Player player) {
         Location loc = player.getLocation();
-        if (!seekers.contains(player.getUniqueId())) return Component.empty();
         double min = Double.MAX_VALUE;
         for (Player hider : getHiders()) {
             if (!hider.getWorld().equals(player.getWorld())) continue;
@@ -587,7 +586,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     protected void updateCompassTarget(Player seeker) {
-        if (!seekers.contains(seeker.getUniqueId())) return;
         double min = Double.MAX_VALUE;
         Location loc = seeker.getLocation();
         Location target = null;
