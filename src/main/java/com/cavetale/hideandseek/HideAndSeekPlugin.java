@@ -32,6 +32,7 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.Bisected;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -914,6 +915,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     if (org.bukkit.Tag.BUTTONS.isTagged(material)) return;
                     if (org.bukkit.Tag.SIGNS.isTagged(material)) return;
                     if (MaterialTags.SKULLS.isTagged(material)) return;
+                    if (block.getBlockData() instanceof Bisected) return;
                     break;
                 }
                 itemCooldown.put(player.getUniqueId(), then);
