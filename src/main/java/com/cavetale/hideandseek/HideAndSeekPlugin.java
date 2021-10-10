@@ -654,7 +654,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             int seconds = timeLeft % 60;
             List<Component> lines = new ArrayList<>();
             lines.add(identity);
-            if (seekers.contains(player.getUniqueId())) {
+            if (seekers.contains(player.getUniqueId()) || player.getGameMode() == GameMode.SPECTATOR) {
                 lines.add(Component.text("Hint: ", NamedTextColor.GRAY)
                           .append(getHint(player)));
             }
