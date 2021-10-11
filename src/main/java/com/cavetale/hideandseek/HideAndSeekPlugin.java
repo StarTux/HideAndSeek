@@ -24,7 +24,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -58,7 +57,6 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
@@ -218,7 +216,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    void stopGame() {
+    protected void stopGame() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.getInventory().clear();
         }
@@ -235,13 +233,17 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         distractions.clear();
     }
 
-    boolean startGame() {
+    protected boolean startGame() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.getInventory().clear();
         }
         List<Player> players = Bukkit.getOnlinePlayers().stream()
             .filter(p -> p.getGameMode() != GameMode.SPECTATOR)
-            .filter(p -> !AFKPlugin.isAfk(p))
+            .peek(p -> {
+                    if (AFKPlugin.isAfk(p)) {
+                        tag.fairness.remove(p.getUniqueId());
+                    }
+                })
             .collect(Collectors.toList());
         Collections.shuffle(players);
         Collections.sort(players, (a, b) -> Integer.compare(getFairness(b), getFairness(a)));
@@ -419,14 +421,16 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         switch (newPhase) {
         case SEEK:
             for (Player player : getServer().getOnlinePlayers()) {
-                player.sendTitle(ChatColor.GREEN + "Seek!", "");
+                player.showTitle(Title.title(Component.text("Seek!", NamedTextColor.GREEN),
+                                             Component.empty()));
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 0.125f, 2.0f);
             }
             break;
         case END:
             if (hiders.isEmpty()) {
                 for (Player player : getServer().getOnlinePlayers()) {
-                    player.sendTitle(ChatColor.GREEN + "Seekers win!", "");
+                    player.showTitle(Title.title(Component.text("Seekers win!", NamedTextColor.GREEN),
+                                                 Component.empty()));
                     player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 0.125f, 2.0f);
                 }
             } else {
@@ -439,7 +443,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 }
                 for (Player player : getServer().getOnlinePlayers()) {
                     player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 0.125f, 2.0f);
-                    player.sendTitle(ChatColor.GREEN + "Hiders win!", "");
+                    player.showTitle(Title.title(Component.text("Hiders win!", NamedTextColor.GREEN),
+                                                 Component.empty()));
                 }
             }
             saveTag();
@@ -475,7 +480,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         if (phase != Phase.IDLE) {
-            seekers.add(event.getPlayer().getUniqueId());
+            Player player = event.getPlayer();
+            seekers.add(player.getUniqueId());
+            giveSeekerItems(player);
         }
     }
 
@@ -488,7 +495,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
         if (isSeeker(player)) return;
         event.setCancelled(true);
-        player.sendMessage(ChatColor.RED + "You're not a seeker!");
+        Component message = Component.text("You're not a seeker!", NamedTextColor.RED);
+        player.sendMessage(message);
+        player.sendActionBar(message);
     }
 
     boolean consoleCommand(String cmd) {
@@ -505,12 +514,27 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             player.setFireTicks(0);
         }
         switch (phase) {
-        case HIDE:
+        case HIDE: {
             if (getTimeLeft() <= 0) {
                 setPhase(Phase.SEEK);
                 return;
             }
+            Location anchor = getSeekLocation();
+            for (Player seeker : getSeekers()) {
+                Location ploc = seeker.getLocation();
+                if (!ploc.getWorld().equals(anchor.getWorld()) || ploc.distance(anchor) > 8.0) {
+                    Location to = anchor.clone();
+                    to.setPitch(ploc.getPitch());
+                    to.setYaw(ploc.getYaw());
+                    seeker.teleport(to);
+                    Component message = Component.text("You can start seeking in " + getTimeLeft() + " seconds!",
+                                                       NamedTextColor.RED);
+                    seeker.sendMessage(message);
+                    seeker.sendActionBar(message);
+                }
+            }
             break;
+        }
         case SEEK:
             if (getTimeLeft() <= 0) {
                 for (Player hider : getHiders()) {
@@ -529,9 +553,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             for (Player hider : getHiders()) {
                 if (ticks % 20 == 0) {
                     if (getTimeLeft() < tag.glowTime) {
-                        hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false), true);
+                        hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false));
                     }
-                    hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 3, true, false), true);
+                    hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 3, true, false));
                 }
             }
             for (Player seeker : getSeekers()) {
@@ -635,16 +659,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                       identity,
                       Component.text("Hiding ", NamedTextColor.LIGHT_PURPLE)
                       .append(Component.text(String.format("%02d:%02d", minutes, seconds), NamedTextColor.WHITE)));
-            for (Player seeker : getSeekers()) {
-                if (seeker.getLocation().distance(getSeekLocation()) > 4.0) {
-                    Location ploc = seeker.getLocation();
-                    Location to = getSeekLocation().clone();
-                    to.setPitch(ploc.getPitch());
-                    to.setYaw(ploc.getYaw());
-                    seeker.teleport(to);
-                    seeker.sendMessage(ChatColor.RED + "You can start seeking in " + getTimeLeft() + " seconds!");
-                }
-            }
             break;
         }
         case SEEK: {
@@ -746,8 +760,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     boolean discover(Player seeker, Player hider) {
         if (!hiders.contains(hider.getUniqueId())) return false;
         if (!seekers.contains(seeker.getUniqueId())) {
-            seeker.sendMessage(ChatColor.RED + "You're not a seeker!");
-            seeker.sendActionBar(ChatColor.RED + "You're not a seeker!");
+            Component message = Component.text("You're not a seeker!", NamedTextColor.RED);
+            seeker.sendMessage(message);
+            seeker.sendActionBar(message);
             return false;
         }
         undisguise(hider);
@@ -755,9 +770,12 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seekers.add(hider.getUniqueId());
         giveSeekerItems(hider);
         addFairness(seeker, 1);
+        Component message = Component.text(seeker.getName() + " discovered " + hider.getName() + "!",
+                                           NamedTextColor.GREEN);
         for (Player target : getServer().getOnlinePlayers()) {
-            target.sendMessage(ChatColor.GREEN + seeker.getName() + " discovered " + hider.getName() + "!");
-            target.sendTitle("", ChatColor.GREEN + seeker.getName() + " discovered " + hider.getName() + "!");
+            target.sendMessage(message);
+            target.showTitle(Title.title(Component.empty(),
+                                         message));
             target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.2f, 2.0f);
         }
         seeker.getInventory().addItem(hintEye(3));
@@ -850,8 +868,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 return;
             }
             itemCooldown.put(player.getUniqueId(), then);
-            player.sendMessage(ChatColor.GREEN + "All hiders are meowing...");
-            player.sendActionBar(ChatColor.GREEN + "All hiders are meowing...");
+            Component message = Component.text("All hiders are meowing...", NamedTextColor.GREEN);
+            player.sendMessage(message);
+            player.sendActionBar(message);
             hint();
             break;
         }
@@ -863,11 +882,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             if (hiders.contains(player.getUniqueId())) {
                 summonDistraction(player);
                 itemCooldown.put(player.getUniqueId(), then);
-                player.sendMessage(ChatColor.GREEN + "Summoning a distraction...");
-                player.sendActionBar(ChatColor.GREEN + "Summoning a distraction...");
+                Component message = Component.text("Summoning a distraction...", NamedTextColor.GREEN);
+                player.sendMessage(message);
+                player.sendActionBar(message);
             } else {
-                player.sendMessage(ChatColor.RED + "You're not hiding!");
-                player.sendActionBar(ChatColor.RED + "You're not hiding!");
+                Component message = Component.text("You're not hiding!", NamedTextColor.RED);
+                player.sendMessage(message);
+                player.sendActionBar(message);
             }
             break;
         }
@@ -878,13 +899,15 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             }
             if (hiders.contains(player.getUniqueId())) {
                 itemCooldown.put(player.getUniqueId(), then);
-                player.sendMessage(ChatColor.GREEN + "Rerolling disguise...");
-                player.sendActionBar(ChatColor.GREEN + "Rerolling disguise...");
+                Component message = Component.text("Rerolling disguise...", NamedTextColor.GREEN);
+                player.sendMessage(message);
+                player.sendActionBar(message);
                 undisguise(player);
                 disguise(player);
             } else {
-                player.sendMessage(ChatColor.RED + "You're not hiding!");
-                player.sendActionBar(ChatColor.RED + "You're not hiding!");
+                Component message = Component.text("You're not hiding!", NamedTextColor.GREEN);
+                player.sendMessage(message);
+                player.sendActionBar(message);
             }
             break;
         case SLIME_BALL:
@@ -917,13 +940,15 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     break;
                 }
                 itemCooldown.put(player.getUniqueId(), then);
-                player.sendMessage(ChatColor.GREEN + "Disguising as " + blockName(material));
-                player.sendActionBar(ChatColor.GREEN + "Disguising as " + blockName(material));
+                Component message = Component.text("Disguising as " + blockName(material), NamedTextColor.GREEN);
+                player.sendMessage(message);
+                player.sendActionBar(message);
                 undisguise(player);
                 disguise(player, material);
             } else {
-                player.sendMessage(ChatColor.RED + "You're not hiding!");
-                player.sendActionBar(ChatColor.RED + "You're not hiding!");
+                Component message = Component.text("You're not hiding!", NamedTextColor.RED);
+                player.sendMessage(message);
+                player.sendActionBar(message);
             }
             break;
         case GLASS:
@@ -946,57 +971,50 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         event.setCancelled(true);
     }
 
-    ItemStack hintEye(int amount) {
-        ItemStack item = new ItemStack(Material.ENDER_EYE, amount);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Hint (Meow)");
-        meta.setLore(Arrays.asList(ChatColor.GRAY + "Make all hiders meow",
-                                   ChatColor.GREEN + "Right-Click " + ChatColor.GRAY + " to use"));
-        item.setItemMeta(meta);
-        return item;
+    protected ItemStack hintEye(int amount) {
+        return Items.text(new ItemStack(Material.ENDER_EYE, amount),
+                          Component.text("Hint (Meow)", NamedTextColor.LIGHT_PURPLE),
+                          Component.text("Make all hiders meow", NamedTextColor.GRAY),
+                          Component.text("Right-Click", NamedTextColor.GREEN)
+                          .append(Component.text(" to use", NamedTextColor.GRAY)));
     }
 
-    ItemStack summonWheat(int amount) {
-        ItemStack item = new ItemStack(Material.WHEAT, amount);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Summon distraction");
-        meta.setLore(Arrays.asList(ChatColor.GRAY + "Spawn in a mob near you",
-                                   ChatColor.GREEN + "Right-Click " + ChatColor.GRAY + " to use"));
-        item.setItemMeta(meta);
-        return item;
+    protected ItemStack summonWheat(int amount) {
+        return Items.text(new ItemStack(Material.WHEAT, amount),
+                          Component.text("Summon distraction", NamedTextColor.LIGHT_PURPLE),
+                          Component.text("Spawn in a mob near you"),
+                          Component.text("Right-Click", NamedTextColor.GREEN)
+                          .append(Component.text(" to use", NamedTextColor.GRAY)));
     }
 
-    ItemStack rerollFoot(int amount) {
-        ItemStack item = new ItemStack(Material.RABBIT_FOOT, amount);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Reroll disguise");
-        meta.setLore(Arrays.asList(ChatColor.GRAY + "Switch to a different random disguise",
-                                   ChatColor.GREEN + "Right-Click " + ChatColor.GRAY + " to use"));
-        item.setItemMeta(meta);
-        return item;
+    protected ItemStack rerollFoot(int amount) {
+        return Items.text(new ItemStack(Material.RABBIT_FOOT, amount),
+                          Component.text("Reroll disguise", NamedTextColor.LIGHT_PURPLE),
+                          Component.text("Switch to a different", NamedTextColor.GRAY),
+                          Component.text("random disguise", NamedTextColor.GRAY),
+                          Component.text("Right-Click", NamedTextColor.GREEN)
+                          .append(Component.text(" to use", NamedTextColor.GRAY)));
     }
 
-    ItemStack copySlime(int amount) {
-        ItemStack item = new ItemStack(Material.SLIME_BALL, amount);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ChatColor.GREEN + "Copy slime");
-        meta.setLore(Arrays.asList(ChatColor.GRAY + "Disguise as a certain block",
-                                   ChatColor.GREEN + "Right-Click " + ChatColor.GRAY + " to use"));
-        item.setItemMeta(meta);
-        return item;
+    protected ItemStack copySlime(int amount) {
+        return Items.text(new ItemStack(Material.SLIME_BALL, amount),
+                          Component.text("Copy slime", NamedTextColor.GREEN),
+                          Component.text("Disguise as a", NamedTextColor.GRAY),
+                          Component.text("certain block", NamedTextColor.GRAY),
+                          Component.text("Right-Click", NamedTextColor.GREEN)
+                          .append(Component.text(" a block to use", NamedTextColor.GRAY)));
     }
 
-    ItemStack makeInvisItem(int amount) {
-        ItemStack item = new ItemStack(Material.GLASS, amount);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Become invisible");
-        meta.setLore(Arrays.asList(ChatColor.GRAY + "Become invisible for 10 seconds",
-                                   ChatColor.GREEN + "Right-Click " + ChatColor.GRAY + " to use"));
-        item.setItemMeta(meta);
-        return item;
+    protected ItemStack makeInvisItem(int amount) {
+        return Items.text(new ItemStack(Material.GLASS, amount),
+                          Component.text("Become Invisible", NamedTextColor.LIGHT_PURPLE),
+                          Component.text("Become invisible", NamedTextColor.GRAY),
+                          Component.text("for 10 seconds", NamedTextColor.GRAY),
+                          Component.text("Right-Click", NamedTextColor.GREEN)
+                          .append(Component.text(" to vanish", NamedTextColor.GRAY)));
     }
 
-    ItemStack makeCompass(int amount) {
+    protected ItemStack makeCompass(int amount) {
         return Items.text(new ItemStack(Material.COMPASS, amount),
                           List.of(Component.text("Hider Finder", NamedTextColor.GOLD),
                                   Component.text("Points to the nearest", NamedTextColor.GRAY),
@@ -1004,7 +1022,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                                   Component.text("when you're too close", NamedTextColor.GRAY)));
     }
 
-    void summonDistraction(Player player) {
+    protected void summonDistraction(Player player) {
         Enum enume = disguises.get(player.getUniqueId());
         EntityType type;
         if (enume instanceof EntityType) {
@@ -1031,18 +1049,21 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     void useInvisItem(Player player) {
         if (!hiders.contains(player.getUniqueId())) {
-            player.sendMessage(ChatColor.RED + "You're not hiding!");
+            Component message = Component.text("You're not hiding!", NamedTextColor.RED);
+            player.sendMessage(message);
+            player.sendActionBar(message);
             return;
         }
         undisguise(player);
-        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 200, 1, true, false), true);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 200, 1, true, false));
         getServer().getScheduler().runTaskLater(this, () -> {
                 if (player.isValid() && hiders.contains(player.getUniqueId())) {
                     redisguise(player);
                 }
             }, 200L);
-        player.sendMessage(ChatColor.AQUA + "Invisible for 10 seconds! GOGOGO");
-        player.sendActionBar(ChatColor.AQUA + "Invisible for 10 seconds! GOGOGO");
+        Component message = Component.text("Invisible for 10 seconds! GOGOGO", NamedTextColor.AQUA);
+        player.sendMessage(message);
+        player.sendActionBar(message);
     }
 
     @EventHandler

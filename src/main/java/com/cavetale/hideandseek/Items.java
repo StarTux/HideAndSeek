@@ -22,6 +22,10 @@ public final class Items {
         return item;
     }
 
+    public static ItemStack text(ItemStack item, Component... text) {
+        return text(item, List.of(text));
+    }
+
     public static void text(ItemMeta meta, List<Component> text) {
         meta.displayName(text.isEmpty() ? Component.empty() : nonItalic(text.get(0)));
         meta.lore(text.isEmpty() ? List.of() : text.subList(1, text.size())
