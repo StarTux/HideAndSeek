@@ -680,9 +680,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             List<Player> hiderList = getHiders();
             Collections.sort(hiderList, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
             for (Player hider : hiderList) {
-                lines.add(Component.join(JoinConfiguration.noSeparators(),
-                                         hiderPrefixMap.computeIfAbsent(hider.getUniqueId(), u -> Component.empty()),
-                                         hider.displayName()));
+                lines.add(hider.displayName());
             }
             event.add(this, Priority.HIGHEST, lines);
             break;
