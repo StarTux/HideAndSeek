@@ -14,9 +14,9 @@ softdepend: []
 commands:
 
   hideandseek:
-    aliases: []
+    aliases: [hideandseekadmin, hsa]
     description: HideAndSeek Command
-    permission: hideandseek.hideandseek
+    permission: hideandseek.admin
     usage: |-
       /hideandseek setworld - Select current world (player only)
       /hideandseek start - Start a game
@@ -28,5 +28,9 @@ commands:
 permissions:
 
   hideandseek.hideandseek:
+    description: Use /hideandseek
+    default: op
+
+  hideandseek.admin:
     description: Use /hideandseek
     default: op

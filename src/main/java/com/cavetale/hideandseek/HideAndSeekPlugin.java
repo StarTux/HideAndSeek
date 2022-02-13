@@ -67,6 +67,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     Phase phase = Phase.IDLE;
     int ticks = 0;
     int phaseTicks = 0;
+    int bonusTicks = 0;
     Set<UUID> hiders = new HashSet<>();
     Set<UUID> seekers = new HashSet<>();
     Random random = new Random();
@@ -83,6 +84,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         int gameTime = 60 * 5;
         int hideTime = 30;
         int glowTime = 30;
+        int bonusTime = 60;
         boolean event;
     }
 
@@ -194,6 +196,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 saveTag();
             }
             sender.sendMessage("Glow time = " + tag.glowTime);
+            return true;
+        }
+        case "bonustime": {
+            if (args.length == 1) {
+                tag.bonusTime = Integer.parseInt(args[0]);
+                saveTag();
+            }
+            sender.sendMessage("Bonus time = " + tag.bonusTime);
             return true;
         }
         case "event": {
@@ -418,6 +428,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     void setPhase(Phase newPhase) {
         phase = newPhase;
         phaseTicks = 0;
+        bonusTicks = 0;
         switch (newPhase) {
         case SEEK:
             for (Player player : getServer().getOnlinePlayers()) {
@@ -536,6 +547,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             break;
         }
         case SEEK:
+            if (bonusTicks > 0) {
+                bonusTicks -= 1;
+            }
             if (getTimeLeft() <= 0) {
                 for (Player hider : getHiders()) {
                     undisguise(hider);
@@ -585,7 +599,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     int getTimeLeft() {
         switch (phase) {
         case HIDE: return tag.hideTime - phaseTicks / 20;
-        case SEEK: return tag.gameTime - phaseTicks / 20;
+        case SEEK: return Math.max(tag.gameTime - phaseTicks / 20, bonusTicks / 20);
         case END: return 30 - phaseTicks / 20;
         default: return 0;
         }
@@ -768,6 +782,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seekers.add(hider.getUniqueId());
         giveSeekerItems(hider);
         addFairness(seeker, 1);
+        bonusTicks = Math.max(bonusTicks, tag.bonusTime * 20);
         Component message = Component.text(seeker.getName() + " discovered " + hider.getName() + "!",
                                            NamedTextColor.GREEN);
         for (Player target : getServer().getOnlinePlayers()) {
