@@ -1095,11 +1095,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     void onEntityDamage(EntityDamageEvent event) {
-        if (phase != Phase.HIDE && phase != Phase.SEEK) return;
         if (!isGameWorld(event.getEntity().getWorld())) return;
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (event.getCause() == EntityDamageEvent.DamageCause.VOID) {
+            player.teleport(getHideLocation());
+        }
+        if (phase != Phase.HIDE && phase != Phase.SEEK) return;
         event.setCancelled(true);
-        if (!(event.getEntity() instanceof Player)) return;
-        Player player = (Player) event.getEntity();
         if (!hiders.contains(player.getUniqueId())) return;
         switch (event.getCause()) {
         case FALL:
@@ -1107,7 +1109,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             return;
         case FIRE:
         case LAVA:
-        case VOID:
             Bukkit.getScheduler().runTask(this, () -> {
                     player.setFireTicks(0);
                     player.sendMessage(Component.text("Burning returns you to spawn!",
