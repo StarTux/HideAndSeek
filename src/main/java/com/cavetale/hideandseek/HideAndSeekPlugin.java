@@ -84,6 +84,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     Map<UUID, Long> itemCooldown = new HashMap<>();
     Map<UUID, Component> hiderPrefixMap = new HashMap<>();
     Set<Entity> distractions = new HashSet<>();
+    private boolean teleporting;
     private List<Highscore> highscore = List.of();
     public static final Component TITLE = Component.join(JoinConfiguration.noSeparators(),
                                                          VanillaItems.SPYGLASS.component,
@@ -546,6 +547,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent event) {
+        if (teleporting) return;
         if (!isGameWorld(event.getPlayer().getWorld())) return;
         if (phase == Phase.IDLE) return;
         if (event.getPlayer().isOp()) return;
@@ -1163,7 +1165,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (!isGameWorld(event.getEntity().getWorld())) return;
         if (!(event.getEntity() instanceof Player player)) return;
         if (event.getCause() == EntityDamageEvent.DamageCause.VOID) {
+            teleporting = true;
             player.teleport(getHideLocation());
+            teleporting = false;
             player.setFallDistance(0f);
         }
         if (phase != Phase.HIDE && phase != Phase.SEEK) return;
@@ -1179,7 +1183,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     player.setFireTicks(0);
                     player.sendMessage(Component.text("Burning returns you to spawn!",
                                                       NamedTextColor.RED));
+                    teleporting = true;
                     player.teleport(getHideLocation());
+                    teleporting = false;
                 });
         default:
             break;
