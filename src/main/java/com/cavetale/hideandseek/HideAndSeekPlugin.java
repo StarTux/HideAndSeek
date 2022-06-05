@@ -1164,6 +1164,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (!(event.getEntity() instanceof Player player)) return;
         if (event.getCause() == EntityDamageEvent.DamageCause.VOID) {
             player.teleport(getHideLocation());
+            player.setFallDistance(0f);
         }
         if (phase != Phase.HIDE && phase != Phase.SEEK) return;
         event.setCancelled(true);
