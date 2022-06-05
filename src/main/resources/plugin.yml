@@ -3,12 +3,12 @@ main: com.cavetale.hideandseek.HideAndSeekPlugin
 name: HideAndSeek
 version: 0.1
 description: HideAndSeek Plugin
-api-version: 1.17
+api-version: 1.18
 
 author: StarTux
 website: https://github.com/StarTux/HideAndSeek
 
-depend: [Sidebar, Title, AFK]
+depend: [Core, PlayerCache, Sidebar, Title, Fam, Mytems]
 softdepend: []
 
 commands:
@@ -24,6 +24,8 @@ commands:
       /hideandseek save - Save runtime
       /hideandseek load - (Re)load runtime
       /hideandseek fair - List player fairness
+      /hideandseek score reset - Score reset
+      /hideandseek score add <player> <amount> - Manipulate scores
 
 permissions:
 

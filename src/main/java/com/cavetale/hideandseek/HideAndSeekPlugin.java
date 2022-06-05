@@ -1,9 +1,13 @@
 package com.cavetale.hideandseek;
 
-import com.cavetale.afk.AFKPlugin;
+import com.cavetale.core.command.CommandArgCompleter;
+import com.cavetale.core.font.VanillaItems;
+import com.cavetale.fam.trophy.Highscore;
+import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.cavetale.sidebar.PlayerSidebarEvent;
 import com.cavetale.sidebar.Priority;
 import com.destroystokyo.paper.MaterialTags;
+import com.winthier.playercache.PlayerCache;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
 import java.util.ArrayList;
@@ -55,6 +59,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -62,6 +67,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     Phase phase = Phase.IDLE;
@@ -77,10 +84,15 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     Map<UUID, Long> itemCooldown = new HashMap<>();
     Map<UUID, Component> hiderPrefixMap = new HashMap<>();
     Set<Entity> distractions = new HashSet<>();
+    private List<Highscore> highscore = List.of();
+    public static final Component TITLE = Component.join(JoinConfiguration.noSeparators(),
+                                                         VanillaItems.SPYGLASS.component,
+                                                         Component.text("Hide and Seek", NamedTextColor.LIGHT_PURPLE));
 
     static final class Tag {
         String worldName;
         Map<UUID, Integer> fairness = new HashMap<>();
+        Map<UUID, Integer> scores = new HashMap<>();
         int gameTime = 60 * 5;
         int hideTime = 30;
         int glowTime = 30;
@@ -123,6 +135,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     void loadTag() {
         tag = Json.load(tagFile, Tag.class, Tag::new);
+        computeHighscore();
     }
 
     void saveTag() {
@@ -220,6 +233,26 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             sender.sendMessage("Event mode = " + tag.event);
             return true;
         }
+        case "reward":
+            int res = rewardHighscore();
+            sender.sendMessage(text(res + " players rewarded", AQUA));
+            return true;
+        case "score":
+            if (args.length == 1 && args[0].equals("reset")) {
+                tag.scores.clear();
+                computeHighscore();
+                sender.sendMessage(text("Scores reset", AQUA));
+                return true;
+            }
+            if (args.length == 3 && args[0].equals("add")) {
+                PlayerCache target = PlayerCache.require(args[1]);
+                int value = CommandArgCompleter.requireInt(args[2], i -> i != 0);
+                addScore(target.uuid, value);
+                computeHighscore();
+                sender.sendMessage(text("Score of " + target.name + " adjusted by " + value, AQUA));
+                return true;
+            }
+            return false;
         default:
             sender.sendMessage("Unknown subcommand: " + cmd);
             return true;
@@ -249,11 +282,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
         List<Player> players = Bukkit.getOnlinePlayers().stream()
             .filter(p -> p.getGameMode() != GameMode.SPECTATOR)
-            .peek(p -> {
-                    if (AFKPlugin.isAfk(p)) {
-                        tag.fairness.remove(p.getUniqueId());
-                    }
-                })
             .collect(Collectors.toList());
         Collections.shuffle(players);
         Collections.sort(players, (a, b) -> Integer.compare(getFairness(b), getFairness(a)));
@@ -303,6 +331,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seeker.getInventory().addItem(makeCompass(1));
         seeker.getInventory().addItem(hintEye(3));
         seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
+        seeker.getInventory().addItem(new ItemStack(Material.SPYGLASS));
     }
 
     void disguise(Player player) {
@@ -435,6 +464,20 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 player.showTitle(Title.title(Component.text("Seek!", NamedTextColor.GREEN),
                                              Component.empty()));
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 0.125f, 2.0f);
+                // Find hiders that didn't move
+                if (hiders.contains(player.getUniqueId())) {
+                    Location location = player.getLocation();
+                    Location location2 = getHideLocation();
+                    if (!location.getWorld().equals(location2.getWorld())
+                        || location.distanceSquared(location2) < 9.0) {
+                        hiders.remove(player.getUniqueId());
+                        undisguise(player);
+                        hiders.remove(player.getUniqueId());
+                        seekers.add(player.getUniqueId());
+                        giveSeekerItems(player);
+                        tag.fairness.remove(player.getUniqueId());
+                    }
+                }
             }
             break;
         case END:
@@ -448,10 +491,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 for (Player hider : getHiders()) {
                     addFairness(hider, 1);
                     if (tag.event) {
+                        addScore(hider.getUniqueId(), 5);
+                    }
+                    if (tag.event) {
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + hider.getName() + " Hider Sneaky");
                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + hider.getName());
                     }
                 }
+                if (tag.event) computeHighscore();
                 for (Player player : getServer().getOnlinePlayers()) {
                     player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 0.125f, 2.0f);
                     player.showTitle(Title.title(Component.text("Hiders win!", NamedTextColor.GREEN),
@@ -654,6 +701,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     void onPlayerSidebar(PlayerSidebarEvent event) {
+        List<Component> lines = new ArrayList<>();
+        lines.add(TITLE);
         Player player = event.getPlayer();
         Component identity = Component.empty();
         if (seekers.contains(player.getUniqueId())) {
@@ -664,14 +713,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             identity = Component.text("You were found!", NamedTextColor.GRAY);
         }
         switch (phase) {
-        case IDLE: return;
+        case IDLE: break;
         case HIDE: {
             int timeLeft = getTimeLeft();
             int minutes = timeLeft / 60;
             int seconds = timeLeft % 60;
-            event.add(this, Priority.HIGHEST,
-                      identity,
-                      Component.text("Hiding ", NamedTextColor.LIGHT_PURPLE)
+            lines.add(identity);
+            lines.add(Component.text("Hiding ", NamedTextColor.LIGHT_PURPLE)
                       .append(Component.text(String.format("%02d:%02d", minutes, seconds), NamedTextColor.WHITE)));
             break;
         }
@@ -679,7 +727,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             int timeLeft = getTimeLeft();
             int minutes = timeLeft / 60;
             int seconds = timeLeft % 60;
-            List<Component> lines = new ArrayList<>();
             lines.add(identity);
             if (seekers.contains(player.getUniqueId()) || player.getGameMode() == GameMode.SPECTATOR) {
                 lines.add(Component.text("Hint: ", NamedTextColor.GRAY)
@@ -696,19 +743,23 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             for (Player hider : hiderList) {
                 lines.add(hider.displayName());
             }
-            event.add(this, Priority.HIGHEST, lines);
             break;
         }
         case END:
             if (hiders.isEmpty()) {
-                event.add(this, Priority.HIGHEST, Component.text("Seekers Win!!!", NamedTextColor.GOLD));
+                lines.add(Component.text("Seekers Win!!!", NamedTextColor.GOLD));
             } else {
-                event.add(this, Priority.HIGHEST, Component.text("Hiders Win!!!", NamedTextColor.LIGHT_PURPLE));
+                lines.add(Component.text("Hiders Win!!!", NamedTextColor.LIGHT_PURPLE));
             }
             break;
         default:
             break;
         }
+        if (tag.event) {
+            lines.addAll(Highscore.sidebar(highscore));
+        }
+        if (lines.isEmpty()) return;
+        event.add(this, Priority.HIGHEST, lines);
     }
 
     @EventHandler
@@ -782,6 +833,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seekers.add(hider.getUniqueId());
         giveSeekerItems(hider);
         addFairness(seeker, 1);
+        if (tag.event) {
+            addScore(seeker.getUniqueId(), 1);
+            computeHighscore();
+        }
         bonusTicks = Math.max(bonusTicks, tag.bonusTime * 20);
         Component message = Component.text(seeker.getName() + " discovered " + hider.getName() + "!",
                                            NamedTextColor.GREEN);
@@ -817,10 +872,18 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     public int addFairness(Player player, int amount) {
         UUID uuid = player.getUniqueId();
-        int val = tag.fairness.computeIfAbsent(uuid, u -> 0);
+        int val = tag.fairness.getOrDefault(uuid, 0);
         int newVal = Math.max(0, val + amount);
         tag.fairness.put(uuid, newVal);
         return val + newVal;
+    }
+
+    public int getScore(UUID uuid) {
+        return tag.scores.getOrDefault(uuid, 0);
+    }
+
+    public void addScore(UUID uuid, int value) {
+        tag.scores.put(uuid, Math.max(0, getScore(uuid) + value));
     }
 
     public World getWorld() {
@@ -841,9 +904,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     void onInventoryOpen(InventoryOpenEvent event) {
-        if (!isGameWorld(event.getPlayer().getWorld())) return;
-        if (event.getPlayer().isOp()) return;
-        event.setCancelled(true);
+        if (event.getInventory().getHolder() instanceof BlockInventoryHolder || event.getInventory().getHolder() instanceof Entity) {
+            if (!isGameWorld(event.getPlayer().getWorld())) return;
+            if (event.getPlayer().isOp()) return;
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler
@@ -1127,5 +1192,17 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (player.getGameMode() == GameMode.CREATIVE) return;
         player.sendMessage(Component.text("Item dropping not allowed!", NamedTextColor.RED));
         event.setCancelled(true);
+    }
+
+    private void computeHighscore() {
+        highscore = Highscore.of(tag.scores);
+    }
+
+    private int rewardHighscore() {
+        return Highscore.reward(tag.scores,
+                                "hide_and_seek",
+                                TrophyCategory.MEDAL,
+                                TITLE,
+                                hi -> "You collected " + hi.score + " point" + (hi.score == 1 ? "" : "s"));
     }
 }
