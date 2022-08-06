@@ -1,6 +1,7 @@
 package com.cavetale.hideandseek;
 
 import com.cavetale.core.command.CommandArgCompleter;
+import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.font.VanillaItems;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
@@ -1200,6 +1201,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (!isGameWorld(player.getWorld())) return;
         if (player.getGameMode() == GameMode.CREATIVE) return;
         player.sendMessage(Component.text("Item dropping not allowed!", NamedTextColor.RED));
+        event.setCancelled(true);
+    }
+
+
+    @EventHandler
+    private void onPlayerTPA(PlayerTPAEvent event) {
+        Player player = event.getTarget();
+        if (!isGameWorld(player.getWorld())) return;
         event.setCancelled(true);
     }
 
