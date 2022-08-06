@@ -63,10 +63,13 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.potion.PotionType;
 import org.bukkit.util.Vector;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
@@ -334,6 +337,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seeker.getInventory().addItem(hintEye(3));
         seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
         seeker.getInventory().addItem(new ItemStack(Material.SPYGLASS));
+        ItemStack potion = new ItemStack(Material.POTION);
+        potion.editMeta(m -> {
+                if (m instanceof PotionMeta meta) {
+                    meta.setBasePotionData(new PotionData(PotionType.NIGHT_VISION, true, false));
+                }
+            });
+        seeker.getInventory().addItem(potion);
     }
 
     void disguise(Player player) {
