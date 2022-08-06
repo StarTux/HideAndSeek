@@ -284,6 +284,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected boolean startGame() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.getInventory().clear();
+            for (var potionEffect : player.getActivePotionEffects()) {
+                player.removePotionEffect(potionEffect.getType());
+            }
         }
         List<Player> players = Bukkit.getOnlinePlayers().stream()
             .filter(p -> p.getGameMode() != GameMode.SPECTATOR)
