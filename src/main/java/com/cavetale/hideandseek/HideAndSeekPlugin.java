@@ -1227,7 +1227,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     private int rewardHighscore() {
         return Highscore.reward(tag.scores,
                                 "hide_and_seek",
-                                TrophyCategory.MEDAL,
+                                TrophyCategory.HIDE_AND_SEEK,
                                 TITLE,
                                 hi -> "You collected " + hi.score + " point" + (hi.score == 1 ? "" : "s"));
     }
