@@ -14,18 +14,16 @@ softdepend: []
 commands:
 
   hideandseek:
-    aliases: [hideandseekadmin, hsa]
-    description: HideAndSeek Command
+    aliases: [hsa]
+    description: Hide And Seek User Command
+    permission: hideandseek.hideandseek
+    usage: /hsa
+
+  hideandseekadmin:
+    aliases: [hsaadm]
+    description: HideAndSeek Admin Command
     permission: hideandseek.admin
-    usage: |-
-      /hideandseek setworld - Select current world (player only)
-      /hideandseek start - Start a game
-      /hideandseek stop - Stop the game
-      /hideandseek save - Save runtime
-      /hideandseek load - (Re)load runtime
-      /hideandseek fair - List player fairness
-      /hideandseek score reset - Score reset
-      /hideandseek score add <player> <amount> - Manipulate scores
+    usage: /hsaadm
 
 permissions:
 
@@ -34,5 +32,5 @@ permissions:
     default: op
 
   hideandseek.admin:
-    description: Use /hideandseek
+    description: Use /hideandseekadmin
     default: op
