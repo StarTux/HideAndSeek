@@ -1,14 +1,15 @@
 package com.cavetale.hideandseek;
 
 import com.cavetale.core.command.CommandArgCompleter;
+import com.cavetale.core.event.hud.PlayerHudEvent;
+import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.font.VanillaItems;
+import com.cavetale.core.item.ItemKinds;
+import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
-import com.cavetale.sidebar.PlayerSidebarEvent;
-import com.cavetale.sidebar.Priority;
 import com.destroystokyo.paper.MaterialTags;
-import com.winthier.playercache.PlayerCache;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
 import java.util.ArrayList;
@@ -441,7 +442,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     String blockName(Material material) {
         return material.isItem()
-            ? new ItemStack(material).getI18NDisplayName()
+            ? ItemKinds.name(new ItemStack(material))
             : toCamelCase(material);
     }
 
@@ -716,7 +717,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    void onPlayerSidebar(PlayerSidebarEvent event) {
+    void onPlayerHud(PlayerHudEvent event) {
         List<Component> lines = new ArrayList<>();
         lines.add(TITLE);
         Player player = event.getPlayer();
@@ -775,7 +776,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             lines.addAll(Highscore.sidebar(highscore));
         }
         if (lines.isEmpty()) return;
-        event.add(this, Priority.HIGHEST, lines);
+        event.sidebar(PlayerHudPriority.HIGHEST, lines);
     }
 
     @EventHandler
