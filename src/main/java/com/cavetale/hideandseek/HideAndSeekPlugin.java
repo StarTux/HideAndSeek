@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -68,6 +69,7 @@ import org.bukkit.util.Vector;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
 import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
@@ -179,6 +181,15 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 hider.getInventory().addItem(rerollFoot(3));
                 hider.getInventory().addItem(makeInvisItem(1));
             }
+            ItemStack potion = new ItemStack(Material.POTION);
+            potion.editMeta(m -> {
+                    if (m instanceof PotionMeta meta) {
+                        meta.addCustomEffect(new PotionEffect(PotionEffectType.LEVITATION, 20 * 20, 0, false, true, true), true);
+                        meta.setColor(Color.PURPLE);
+                    }
+                    m.displayName(text("Potion of Levitation", WHITE).decoration(ITALIC, false));
+                });
+            hider.getInventory().addItem(potion);
         }
         for (Player seeker : getSeekers()) {
             addFairness(seeker, 1);
@@ -263,7 +274,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             disguises.put(player.getUniqueId(), enume);
             Material material = (Material) enume;
             consoleCommand("disguiseplayer " + player.getName() + " falling_block " + material.name().toLowerCase());
-            Component prefix = text("[" + blockName(material) + "]", GREEN);
+            VanillaItems vi = VanillaItems.of(material);
+            final Component prefix;
+            if (vi != null) {
+                prefix = textOfChildren(text("[", GREEN), vi, text("]", GREEN));
+            } else {
+                prefix = text("[" + blockName(material) + "]", GREEN);
+            }
             hiderPrefixMap.put(player.getUniqueId(), prefix);
             TitlePlugin.getInstance().setPlayerListPrefix(player, prefix);
         }
@@ -365,8 +382,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                         addScore(hider.getUniqueId(), 5);
                     }
                     if (tag.event) {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + hider.getName() + " Hider Sneaky");
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + hider.getName());
+                        consoleCommand("ml add " + hider.getName());
+                        consoleCommand("titles unlockset " + hider.getName() + " Hider Sneaky");
                     }
                 }
                 if (tag.event) computeHighscore();
@@ -721,8 +738,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seeker.getInventory().addItem(hintEye(3));
         seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
         if (tag.event) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + seeker.getName());
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "titles unlockset " + seeker.getName() + " Seeker Detective");
+            consoleCommand("ml add " + seeker.getName());
+            consoleCommand("titles unlockset " + seeker.getName() + " Seeker Detective");
         }
         return true;
     }
