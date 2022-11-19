@@ -90,6 +90,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected Set<Entity> distractions = new HashSet<>();
     private boolean teleporting;
     private List<Highscore> highscore = List.of();
+    private List<Component> highscoreLines = List.of();
     public static final Component TITLE = join(noSeparators(),
                                                VanillaItems.SPYGLASS.component,
                                                text("Hide and Seek", LIGHT_PURPLE));
@@ -184,7 +185,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             ItemStack potion = new ItemStack(Material.POTION);
             potion.editMeta(m -> {
                     if (m instanceof PotionMeta meta) {
-                        meta.addCustomEffect(new PotionEffect(PotionEffectType.LEVITATION, 20 * 20, 0, false, true, true), true);
+                        meta.addCustomEffect(new PotionEffect(PotionEffectType.LEVITATION, 20 * 15, 1, false, true, true), true);
                         meta.setColor(Color.PURPLE);
                     }
                     m.displayName(text("Potion of Levitation", WHITE).decoration(ITALIC, false));
@@ -204,7 +205,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     protected void giveSeekerItems(Player seeker) {
         seeker.getInventory().addItem(makeCompass(1));
-        seeker.getInventory().addItem(hintEye(3));
+        seeker.getInventory().addItem(hintEye(8));
         seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
         seeker.getInventory().addItem(new ItemStack(Material.SPYGLASS));
         ItemStack potion = new ItemStack(Material.POTION);
@@ -212,6 +213,29 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 if (m instanceof PotionMeta meta) {
                     meta.setBasePotionData(new PotionData(PotionType.NIGHT_VISION, true, false));
                 }
+            });
+        seeker.getInventory().addItem(potion);
+        potion = new ItemStack(Material.POTION);
+        potion.editMeta(m -> {
+                if (m instanceof PotionMeta meta) {
+                    meta.setBasePotionData(new PotionData(PotionType.SLOW_FALLING, false, false));
+                }
+            });
+        seeker.getInventory().addItem(potion);
+        potion = new ItemStack(Material.POTION);
+        potion.editMeta(m -> {
+                if (m instanceof PotionMeta meta) {
+                    meta.setBasePotionData(new PotionData(PotionType.SPEED, true, false));
+                }
+            });
+        seeker.getInventory().addItem(potion);
+        potion = new ItemStack(Material.POTION);
+        potion.editMeta(m -> {
+                if (m instanceof PotionMeta meta) {
+                    meta.addCustomEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 20 * 30, 0, false, true, true), true);
+                    meta.setColor(Color.BLUE);
+                }
+                m.displayName(text("Potion of Dolphin's Grace", WHITE).decoration(ITALIC, false));
             });
         seeker.getInventory().addItem(potion);
     }
@@ -379,7 +403,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 for (Player hider : getHiders()) {
                     addFairness(hider, 1);
                     if (tag.event) {
-                        addScore(hider.getUniqueId(), 5);
+                        addScore(hider.getUniqueId(), 1);
                     }
                     if (tag.event) {
                         consoleCommand("ml add " + hider.getName());
@@ -457,8 +481,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             player.setHealth(20.0);
             player.setFoodLevel(20);
             player.setSaturation(20.0f);
-            player.setRemainingAir(player.getMaximumAir());
-            player.setFireTicks(0);
+            if (isSeeker(player)) {
+                player.setRemainingAir(player.getMaximumAir());
+                player.setFireTicks(0);
+            }
         }
         switch (phase) {
         case HIDE: {
@@ -546,6 +572,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         double min = Double.MAX_VALUE;
         for (Player hider : getHiders()) {
             if (!hider.getWorld().equals(player.getWorld())) continue;
+            if (hider.hasPotionEffect(PotionEffectType.INVISIBILITY)) continue;
             min = Math.min(min, hider.getLocation().distanceSquared(loc));
         }
         if (min < 12 * 12) {
@@ -572,7 +599,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 target = hiderLoc;
             }
         }
-        final int minDistance = 32;
+        final int minDistance = 16;
         if (target == null || min < (minDistance * minDistance)) {
             // Spin in circles
             double fraction = ((double) (ticks % 50)) / 50.0;
@@ -645,7 +672,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             break;
         }
         if (tag.event) {
-            lines.addAll(Highscore.sidebar(highscore));
+            lines.addAll(highscoreLines);
         }
         if (lines.isEmpty()) return;
         event.sidebar(PlayerHudPriority.HIGHEST, lines);
@@ -736,7 +763,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.2f, 2.0f);
         }
         seeker.getInventory().addItem(hintEye(3));
-        seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
+        seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 8));
         if (tag.event) {
             consoleCommand("ml add " + seeker.getName());
             consoleCommand("titles unlockset " + seeker.getName() + " Seeker Detective");
@@ -913,7 +940,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             return;
         }
         if (phase != Phase.HIDE && phase != Phase.SEEK) return;
-        event.setCancelled(true);
         if (!hiders.contains(player.getUniqueId())) return;
         switch (event.getCause()) {
         case FALL:
@@ -921,6 +947,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             return;
         case FIRE:
         case LAVA:
+            event.setCancelled(true);
             Bukkit.getScheduler().runTask(this, () -> {
                     player.setFireTicks(0);
                     player.sendMessage(text("Burning returns you to spawn!",
@@ -1082,9 +1109,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             return;
         }
         undisguise(player);
-        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 200, 1, true, false));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 20 * 20, 1, true, false));
         getServer().getScheduler().runTaskLater(this, () -> {
-                if (player.isValid() && hiders.contains(player.getUniqueId())) {
+                if (phase == Phase.SEEK && player.isValid() && hiders.contains(player.getUniqueId())) {
                     redisguise(player);
                 }
             }, 200L);
@@ -1095,6 +1122,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     protected void computeHighscore() {
         highscore = Highscore.of(tag.scores);
+        highscoreLines = Highscore.sidebar(highscore);
     }
 
     protected int rewardHighscore() {
