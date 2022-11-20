@@ -156,6 +156,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         hiders.clear();
         hiderPrefixMap.clear();
         seekers.clear();
+        if (tag.event) {
+            List<String> names = new ArrayList<>();
+            for (Player player : players) names.add(player.getName());
+            consoleCommand("ml add " + String.join(" ", names));
+        }
         for (int i = 0; i < players.size(); i += 1) {
             Player player = players.get(i);
             undisguise(player);
@@ -406,7 +411,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                         addScore(hider.getUniqueId(), 1);
                     }
                     if (tag.event) {
-                        consoleCommand("ml add " + hider.getName());
                         consoleCommand("titles unlockset " + hider.getName() + " Hider Sneaky");
                     }
                 }
