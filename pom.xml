@@ -98,5 +98,13 @@
       <scope>provided</scope>
     </dependency>
 
+    <!-- Spawn -->
+    <dependency>
+      <groupId>com.winthier.spawn</groupId>
+      <artifactId>spawn</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+
   </dependencies>
 </project>

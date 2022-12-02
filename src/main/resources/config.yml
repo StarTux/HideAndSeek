@@ -1,2 +1,40 @@
-# The world to use for the game
-world: dwarven_village
+worlds:
+- path: medieval_town
+  displayName: Medieval Town
+  description: Medieval Town Build Event 2021
+- path: skyscrapers
+  displayName: Skyscrapers
+  description: Skyscrapers Build Event 2021
+- path: amorahills
+  displayName: Amora Hills
+  description: "Valentine's Day Map"
+- path: ForgottenVillage
+  displayName: Forgotten Village
+  description: A scary village with many dark places to hide
+- path: beachparty
+  displayName: Beach Party
+  description: Beach Party Build Event 2021
+- path: fair
+  displayName: Fairground
+  description: October Fairground Build Event 2020
+- path: halloween_neighborhood
+  displayName: Midnight Estates
+  description: Hallowen Build Event 2021
+- path: winter_woods
+  displayName: Winter Woods
+  description: Christmas Build Event 2021
+- path: valentine2022
+  displayName: Heavenly Hearts
+  description: Valentine Build Event 2022
+- path: spring_2022
+  displayName: Springtime Village
+  description: Easter Build Event 2022
+- path: endofsummer2022
+  displayName: Cavelantis
+  description: Cavelantis Build Event 2022
+- path: halloweenbuildevent2022
+  displayName: Twin Gourds
+  description: Halloween Build Event 2022
+- path: ghosttown
+  displayName: Ghost Town
+  description: Ghost Town Build Event 2022

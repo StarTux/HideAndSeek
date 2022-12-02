@@ -8,6 +8,7 @@ import com.cavetale.core.item.ItemKinds;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.destroystokyo.paper.MaterialTags;
+import com.winthier.spawn.Spawn;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
@@ -34,11 +36,13 @@ import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Bisected;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -66,6 +70,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 import org.bukkit.util.Vector;
+import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.text;
@@ -75,6 +80,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
 
 public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
+    protected static HideAndSeekPlugin instance;
     protected Phase phase = Phase.IDLE;
     protected int ticks = 0;
     protected int phaseTicks = 0;
@@ -88,12 +94,20 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected Map<UUID, Long> itemCooldown = new HashMap<>();
     protected Map<UUID, Component> hiderPrefixMap = new HashMap<>();
     protected Set<Entity> distractions = new HashSet<>();
-    private boolean teleporting;
-    private List<Highscore> highscore = List.of();
-    private List<Component> highscoreLines = List.of();
+    protected boolean teleporting;
+    protected List<Highscore> highscore = List.of();
+    protected List<Component> highscoreLines = List.of();
+    protected final GameScheduler gameScheduler = new GameScheduler(this);
+    protected final Map<String, HideWorld> hideWorlds = new HashMap<>();
+
     public static final Component TITLE = join(noSeparators(),
                                                VanillaItems.SPYGLASS.component,
                                                text("Hide and Seek", LIGHT_PURPLE));
+
+    @Override
+    public void onLoad() {
+        instance = this;
+    }
 
     @Override
     public void onEnable() {
@@ -104,14 +118,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         loadTag();
         new HideAndSeekCommand(this).enable();
         new HideAndSeekAdminCommand(this).enable();
+        gameScheduler.enable();
+        loadHideWorlds();
     }
 
     @Override
     public void onDisable() {
+        stopGame();
         saveTag();
-        for (Player player : getServer().getOnlinePlayers()) {
-            undisguise(player);
-        }
     }
 
     protected void loadTag() {
@@ -121,6 +135,21 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     protected void saveTag() {
         Json.save(tagFile, tag, true);
+    }
+
+    protected void loadHideWorlds() {
+        hideWorlds.clear();
+        for (var it : getConfig().getMapList("worlds")) {
+            ConfigurationSection section = getConfig().createSection("_tmp", it);
+            HideWorld hideWorld = new HideWorld();
+            hideWorld.load(section);
+            if (!hideWorld.isValid()) {
+                getLogger().severe("Invalid hide world: " + hideWorld + ", " + it);
+                continue;
+            }
+            hideWorlds.put(hideWorld.getPath(), hideWorld);
+        }
+        getLogger().info("" + hideWorlds.size() + " world configurations loaded");
     }
 
     protected void stopGame() {
@@ -138,6 +167,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             entity.remove();
         }
         distractions.clear();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Spawn.warp(player);
+        }
     }
 
     protected boolean startGame() {
@@ -457,6 +489,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             Player player = event.getPlayer();
             seekers.add(player.getUniqueId());
             giveSeekerItems(player);
+        } else if (gameScheduler.isStarted()) {
+            gameScheduler.remindToVote(event.getPlayer());
         }
     }
 
@@ -546,7 +580,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         case END:
             if (getTimeLeft() <= 0) {
                 stopGame();
-                startGame();
                 return;
             }
             break;
@@ -621,6 +654,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void onPlayerHud(PlayerHudEvent event) {
+        gameScheduler.onPlayerHud(event);
         List<Component> lines = new ArrayList<>();
         lines.add(TITLE);
         Player player = event.getPlayer();
@@ -641,6 +675,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             lines.add(identity);
             lines.add(text("Hiding ", LIGHT_PURPLE)
                       .append(text(String.format("%02d:%02d", minutes, seconds), WHITE)));
+            event.bossbar(PlayerHudPriority.HIGH, text("Hiding", LIGHT_PURPLE),
+                          BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS,
+                          (float) phaseTicks / (float) (tag.hideTime * 20));
             break;
         }
         case SEEK: {
@@ -663,6 +700,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             for (Player hider : hiderList) {
                 lines.add(hider.displayName());
             }
+            event.bossbar(PlayerHudPriority.HIGH, text("Seeking", LIGHT_PURPLE),
+                          BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS,
+                          1.0f - (float) phaseTicks / (float) (tag.gameTime * 20));
             break;
         }
         case END:
@@ -986,6 +1026,15 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     private void onArmor(PlayerArmorStandManipulateEvent event) {
         if (event.getPlayer().isOp()) return;
         event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    private void onPlayerSpawnLocation(PlayerSpawnLocationEvent event) {
+        if (phase == Phase.IDLE) {
+            event.setSpawnLocation(Spawn.get());
+        } else {
+            event.setSpawnLocation(getWorld().getSpawnLocation());
+        }
     }
 
     public boolean isGameWorld(World world) {

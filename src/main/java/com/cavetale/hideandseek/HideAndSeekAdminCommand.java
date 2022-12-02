@@ -142,7 +142,8 @@ public final class HideAndSeekAdminCommand extends AbstractCommand<HideAndSeekPl
 
     private void configLoad(CommandSender sender) {
         plugin.loadTag();
-        sender.sendMessage(text("Tag (re)loaded", AQUA));
+        plugin.loadHideWorlds();
+        sender.sendMessage(text("Tag and config (re)loaded", AQUA));
     }
 
     private boolean configGameTime(CommandSender sender, String[] args) {
