@@ -13,4 +13,5 @@ public final class Tag {
     protected int glowTime = 30;
     protected int bonusTime = 60;
     protected boolean event;
+    protected boolean pause;
 }

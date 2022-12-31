@@ -6,8 +6,10 @@ import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.font.VanillaItems;
 import com.cavetale.core.item.ItemKinds;
 import com.cavetale.fam.trophy.Highscore;
+import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.destroystokyo.paper.MaterialTags;
+import com.destroystokyo.paper.event.player.PlayerLaunchProjectileEvent;
 import com.winthier.spawn.Spawn;
 import com.winthier.title.TitlePlugin;
 import java.io.File;
@@ -58,6 +60,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.EquipmentSlot;
@@ -71,8 +74,10 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
+import static com.cavetale.core.font.Unicode.subscript;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.space;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.textOfChildren;
 import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
@@ -101,7 +106,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected final Map<String, HideWorld> hideWorlds = new HashMap<>();
 
     public static final Component TITLE = join(noSeparators(),
-                                               VanillaItems.SPYGLASS.component,
+                                               Mytems.EYES.component,
                                                text("Hide and Seek", LIGHT_PURPLE));
 
     @Override
@@ -174,6 +179,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     protected boolean startGame() {
         for (Player player : Bukkit.getOnlinePlayers()) {
+            player.setHealth(20.0);
             player.getInventory().clear();
             for (var potionEffect : player.getActivePotionEffects()) {
                 player.removePotionEffect(potionEffect.getType());
@@ -241,9 +247,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     protected void giveSeekerItems(Player seeker) {
+        seeker.getInventory().clear();
         seeker.getInventory().addItem(makeCompass(1));
-        seeker.getInventory().addItem(hintEye(8));
-        seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 3));
+        seeker.getInventory().addItem(hintEye(1));
+        seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL));
         seeker.getInventory().addItem(new ItemStack(Material.SPYGLASS));
         ItemStack potion = new ItemStack(Material.POTION);
         potion.editMeta(m -> {
@@ -516,7 +523,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     private void onTick() {
         for (Player player : getServer().getOnlinePlayers()) {
-            player.setHealth(20.0);
             player.setFoodLevel(20);
             player.setSaturation(20.0f);
             if (isSeeker(player)) {
@@ -565,6 +571,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 return;
             }
             for (Player hider : getHiders()) {
+                if (hider.getLocation().getBlock().isLiquid() || hider.isSwimming()) {
+                    hider.setHealth(Math.max(0.0, hider.getHealth() - 0.25));
+                }
                 if (ticks % 20 == 0) {
                     if (getTimeLeft() < tag.glowTime) {
                         hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false));
@@ -673,8 +682,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             int minutes = timeLeft / 60;
             int seconds = timeLeft % 60;
             lines.add(identity);
-            lines.add(text("Hiding ", LIGHT_PURPLE)
-                      .append(text(String.format("%02d:%02d", minutes, seconds), WHITE)));
+            lines.add(textOfChildren(text(subscript("hiding "), LIGHT_PURPLE), text(String.format("%02d:%02d", minutes, seconds), WHITE)));
             event.bossbar(PlayerHudPriority.HIGH, text("Hiding", LIGHT_PURPLE),
                           BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS,
                           (float) phaseTicks / (float) (tag.hideTime * 20));
@@ -686,20 +694,16 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             int seconds = timeLeft % 60;
             lines.add(identity);
             if (seekers.contains(player.getUniqueId()) || player.getGameMode() == GameMode.SPECTATOR) {
-                lines.add(text("Hint: ", GRAY)
-                          .append(getHint(player)));
+                lines.add(textOfChildren(text(subscript("hint "), GRAY), getHint(player)));
             }
-            lines.add(text("Seeking ", GRAY)
-                      .append(text(String.format("%02d:%02d", minutes, seconds), WHITE)));
-            lines.add(text("Seekers: ", GRAY)
-                      .append(text(seekers.size(), WHITE)));
-            lines.add(text("Hiders: ", GRAY)
-                      .append(text(hiders.size(), WHITE)));
+            lines.add(textOfChildren(text(subscript("seeking "), GRAY), text(String.format("%02d:%02d", minutes, seconds), WHITE)));
+            lines.add(textOfChildren(text(subscript("hiders "), GRAY), text(hiders.size(), WHITE)));
             List<Player> hiderList = getHiders();
             Collections.sort(hiderList, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
             for (Player hider : hiderList) {
-                lines.add(hider.displayName());
+                lines.add(textOfChildren(Mytems.BLIND_EYE, space(), hider.displayName()));
             }
+            lines.add(textOfChildren(text(subscript("seekers "), GRAY), text(seekers.size(), WHITE)));
             event.bossbar(PlayerHudPriority.HIGH, text("Seeking", LIGHT_PURPLE),
                           BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS,
                           1.0f - (float) phaseTicks / (float) (tag.gameTime * 20));
@@ -806,8 +810,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                                          message));
             target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.2f, 2.0f);
         }
-        seeker.getInventory().addItem(hintEye(3));
-        seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 8));
         if (tag.event) {
             consoleCommand("ml add " + seeker.getName());
             consoleCommand("titles unlockset " + seeker.getName() + " Seeker Detective");
@@ -822,6 +824,21 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             if (event.getPlayer().isOp()) return;
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler
+    private void onPlayerLaunchProjectile(PlayerLaunchProjectileEvent event) {
+        Player player = event.getPlayer();
+        if (!isGameWorld(player.getWorld())) return;
+        if (event.getItemStack().getType() != Material.ENDER_PEARL) return;
+        if (!isSeeker(player) || phase != Phase.SEEK) {
+            event.setCancelled(true);
+        }
+        event.setShouldConsume(false);
+        if (player.getCooldown(Material.ENDER_PEARL) > 0) {
+            event.setCancelled(true);
+        }
+        Bukkit.getScheduler().runTask(this, () -> player.setCooldown(Material.ENDER_PEARL, 20 * 10));
     }
 
     @EventHandler
@@ -855,7 +872,12 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (cooldown != null && cooldown > now) return;
         switch (item.getType()) {
         case ENDER_EYE: {
+            event.setCancelled(true);
             if (phase != Phase.SEEK) {
+                return;
+            }
+            if (player.getCooldown(Material.ENDER_EYE) > 0) {
+                event.setCancelled(true);
                 return;
             }
             itemCooldown.put(player.getUniqueId(), then);
@@ -863,6 +885,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             player.sendMessage(message);
             player.sendActionBar(message);
             hint();
+            Bukkit.getScheduler().runTask(this, () -> player.setCooldown(Material.ENDER_EYE, 20 * 10));
             break;
         }
         case WHEAT: {
@@ -881,6 +904,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 player.sendMessage(message);
                 player.sendActionBar(message);
             }
+            item.subtract(1);
             break;
         }
         case RABBIT_FOOT:
@@ -900,6 +924,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 player.sendMessage(message);
                 player.sendActionBar(message);
             }
+            item.subtract(1);
             break;
         case SLIME_BALL:
             event.setCancelled(true);
@@ -941,6 +966,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 player.sendMessage(message);
                 player.sendActionBar(message);
             }
+            item.subtract(1);
             break;
         case GLASS:
             event.setCancelled(true);
@@ -949,11 +975,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             }
             itemCooldown.put(player.getUniqueId(), then);
             useInvisItem(player);
+            item.subtract(1);
             break;
         default: return;
         }
         event.setCancelled(true);
-        item.subtract(1);
     }
 
     @EventHandler
@@ -974,6 +1000,31 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (!isGameWorld(event.getEntity().getWorld())) return;
         if (event.getPlayer().isOp()) return;
         event.setCancelled(true);
+    }
+
+    @EventHandler
+    private void onPlayerRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
+        if (!isGameWorld(player.getWorld())) return;
+        double minDist = Double.MAX_VALUE;
+        Player target = null;
+        Location ploc = player.getLocation();
+        for (Player seeker : getSeekers()) {
+            if (!seeker.getWorld().equals(ploc.getWorld())) continue;
+            double dist = seeker.getLocation().distanceSquared(ploc);
+            if (target == null || dist < minDist) {
+                target = seeker;
+                minDist = dist;
+            }
+        }
+        if (target != null) {
+            event.setRespawnLocation(target.getLocation());
+        } else {
+            event.setRespawnLocation(getWorld().getSpawnLocation());
+        }
+        if (isHider(player)) {
+            Bukkit.getScheduler().runTask(this, () -> redisguise(player));
+        }
     }
 
     @EventHandler
@@ -1076,6 +1127,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     public boolean isSeeker(Player player) {
         return seekers.contains(player.getUniqueId());
+    }
+
+    public boolean isHider(Player player) {
+        return hiders.contains(player.getUniqueId());
     }
 
     protected ItemStack hintEye(int amount) {

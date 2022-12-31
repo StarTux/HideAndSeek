@@ -30,7 +30,7 @@ public final class GameScheduler {
     }
 
     protected void tick() {
-        if (plugin.phase != Phase.IDLE || plugin.tag.event || Bukkit.getOnlinePlayers().size() < 2) {
+        if (plugin.phase != Phase.IDLE || plugin.tag.pause || Bukkit.getOnlinePlayers().size() < 2) {
             started = false;
             votes.clear();
             return;

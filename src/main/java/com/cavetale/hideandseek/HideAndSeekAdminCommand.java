@@ -80,6 +80,10 @@ public final class HideAndSeekAdminCommand extends AbstractCommand<HideAndSeekPl
             .description("Set event")
             .completers(CommandArgCompleter.BOOLEAN)
             .senderCaller(this::configEvent);
+        configNode.addChild("pause").arguments("<boolean>")
+            .description("Set pause")
+            .completers(CommandArgCompleter.BOOLEAN)
+            .senderCaller(this::configPause);
     }
 
     private void setWorld(Player player) {
@@ -185,6 +189,16 @@ public final class HideAndSeekAdminCommand extends AbstractCommand<HideAndSeekPl
             plugin.saveTag();
         }
         sender.sendMessage(text("Event mode = " + plugin.tag.event, AQUA));
+        return true;
+    }
+
+    private boolean configPause(CommandSender sender, String[] args) {
+        if (args.length > 1) return false;
+        if (args.length >= 1) {
+            plugin.tag.pause = CommandArgCompleter.requireBoolean(args[0]);
+            plugin.saveTag();
+        }
+        sender.sendMessage(text("Pause mode = " + plugin.tag.pause, AQUA));
         return true;
     }
 }
