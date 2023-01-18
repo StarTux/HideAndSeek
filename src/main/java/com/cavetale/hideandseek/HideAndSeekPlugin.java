@@ -2,6 +2,9 @@ package com.cavetale.hideandseek;
 
 import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
+import com.cavetale.core.event.minigame.MinigameFlag;
+import com.cavetale.core.event.minigame.MinigameMatchCompleteEvent;
+import com.cavetale.core.event.minigame.MinigameMatchType;
 import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.font.VanillaItems;
 import com.cavetale.core.item.ItemKinds;
@@ -437,12 +440,17 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             }
             break;
         case END:
+            MinigameMatchCompleteEvent event = new MinigameMatchCompleteEvent(MinigameMatchType.HIDE_AND_SEEK);
+            event.addPlayers(getHiders());
+            event.addPlayers(getSeekers());
+            if (tag.event) event.addFlags(MinigameFlag.EVENT);
             if (hiders.isEmpty()) {
                 for (Player player : getServer().getOnlinePlayers()) {
                     player.showTitle(Title.title(text("Seekers win!", GREEN),
                                                  empty()));
                     player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 0.125f, 2.0f);
                 }
+                event.addWinners(getSeekers());
             } else {
                 for (Player hider : getHiders()) {
                     addFairness(hider, 1);
@@ -459,8 +467,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     player.showTitle(Title.title(text("Hiders win!", GREEN),
                                                  empty()));
                 }
+                event.addWinners(getHiders());
             }
             saveTag();
+            event.callEvent();
             break;
         default:
             break;
