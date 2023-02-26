@@ -719,7 +719,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             lines.add(textOfChildren(text(subscript("seekers "), GRAY), text(seekers.size(), WHITE)));
             event.bossbar(PlayerHudPriority.HIGH, text("Seeking", LIGHT_PURPLE),
                           BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS,
-                          1.0f - (float) phaseTicks / (float) (tag.gameTime * 20));
+                          1.0f - (float) Math.max(phaseTicks, bonusTicks) / (float) Math.max(bonusTicks, (tag.gameTime * 20)));
             break;
         }
         case END:
