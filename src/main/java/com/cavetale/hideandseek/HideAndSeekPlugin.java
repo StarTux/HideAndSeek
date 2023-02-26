@@ -10,6 +10,7 @@ import com.cavetale.core.font.VanillaItems;
 import com.cavetale.core.item.ItemKinds;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.Mytems;
+import com.cavetale.mytems.item.mobface.MobFace;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.destroystokyo.paper.MaterialTags;
 import com.destroystokyo.paper.event.player.PlayerLaunchProjectileEvent;
@@ -334,11 +335,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     protected void disguise(Player player, Enum enume) {
         player.setMetadata("nostream", new FixedMetadataValue(this, true));
-        if (enume instanceof EntityType) {
+        if (enume instanceof EntityType type) {
             disguises.put(player.getUniqueId(), enume);
-            EntityType type = (EntityType) enume;
             consoleCommand("disguiseplayer " + player.getName() + " " + type.name().toLowerCase());
-            Component prefix = text("[" + entityName(type) + "]", GREEN);
+            MobFace mobFace = MobFace.of(type);
+            Component prefix = mobFace != null
+                ? textOfChildren(text("["), mobFace.mytems, text("]")).color(GREEN)
+                : text("[" + entityName(type) + "]", GREEN);
             hiderPrefixMap.put(player.getUniqueId(), prefix);
             TitlePlugin.getInstance().setPlayerListPrefix(player, prefix);
         } else if (enume instanceof Material) {
