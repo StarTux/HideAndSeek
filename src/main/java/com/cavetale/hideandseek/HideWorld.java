@@ -73,8 +73,6 @@ public final class HideWorld {
         result.setGameRule(GameRule.DO_MOB_SPAWNING, false);
         result.setGameRule(GameRule.DO_TRADER_SPAWNING, false);
         result.setGameRule(GameRule.REDUCED_DEBUG_INFO, true);
-        result.setViewDistance(15);
-        result.setSimulationDistance(2);
         result.setDifficulty(Difficulty.EASY);
         result.setKeepSpawnInMemory(false);
         return result;
