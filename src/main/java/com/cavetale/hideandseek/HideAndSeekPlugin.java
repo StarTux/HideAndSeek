@@ -252,6 +252,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     protected void giveSeekerItems(Player seeker) {
         seeker.getInventory().clear();
+        seeker.getEquipment().setHelmet(Mytems.EASTER_HELMET.createItemStack());
+        seeker.getEquipment().setChestplate(Mytems.EASTER_CHESTPLATE.createItemStack());
+        seeker.getEquipment().setLeggings(Mytems.EASTER_LEGGINGS.createItemStack());
+        seeker.getEquipment().setBoots(Mytems.EASTER_BOOTS.createItemStack());
         seeker.getInventory().addItem(makeCompass(1));
         seeker.getInventory().addItem(hintEye(1));
         seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL));
