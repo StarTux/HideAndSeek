@@ -232,7 +232,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             ItemStack potion = new ItemStack(Material.POTION);
             potion.editMeta(m -> {
                     if (m instanceof PotionMeta meta) {
-                        meta.addCustomEffect(new PotionEffect(PotionEffectType.LEVITATION, 20 * 15, 1, false, true, true), true);
+                        meta.addCustomEffect(new PotionEffect(PotionEffectType.LEVITATION, 20 * 12, 1, false, true, true), true);
                         meta.setColor(Color.PURPLE);
                     }
                     m.displayName(text("Potion of Levitation", WHITE).decoration(ITALIC, false));
@@ -718,7 +718,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             for (Player hider : hiderList) {
                 Component prefix = hiderPrefixMap.get(hider.getUniqueId());
                 if (prefix == null) prefix = Mytems.BLIND_EYE.component;
-                lines.add(textOfChildren(prefix, space(), hider.displayName()));
+                lines.add(textOfChildren(prefix, space(), text(hider.getName(), WHITE)));
             }
             lines.add(textOfChildren(text(subscript("seekers "), GRAY), text(seekers.size(), WHITE)));
             event.bossbar(PlayerHudPriority.HIGH, text("Seeking", LIGHT_PURPLE),
