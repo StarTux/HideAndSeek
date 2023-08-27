@@ -347,7 +347,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 ? textOfChildren(text("["), mobFace.mytems, text("]")).color(GREEN)
                 : text("[" + entityName(type) + "]", GREEN);
             hiderPrefixMap.put(player.getUniqueId(), prefix);
-            TitlePlugin.getInstance().setPlayerListPrefix(player, prefix);
         } else if (enume instanceof Material) {
             disguises.put(player.getUniqueId(), enume);
             Material material = (Material) enume;
@@ -360,7 +359,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 prefix = text("[" + blockName(material) + "]", GREEN);
             }
             hiderPrefixMap.put(player.getUniqueId(), prefix);
-            TitlePlugin.getInstance().setPlayerListPrefix(player, prefix);
         }
     }
 
@@ -718,7 +716,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             List<Player> hiderList = getHiders();
             Collections.sort(hiderList, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
             for (Player hider : hiderList) {
-                lines.add(textOfChildren(Mytems.BLIND_EYE, space(), hider.displayName()));
+                Component prefix = hiderPrefixMap.get(hider.getUniqueId());
+                if (prefix == null) prefix = Mytems.BLIND_EYE.component;
+                lines.add(textOfChildren(prefix, space(), hider.displayName()));
             }
             lines.add(textOfChildren(text(subscript("seekers "), GRAY), text(seekers.size(), WHITE)));
             event.bossbar(PlayerHudPriority.HIGH, text("Seeking", LIGHT_PURPLE),
