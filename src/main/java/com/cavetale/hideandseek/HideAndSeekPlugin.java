@@ -1053,9 +1053,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (phase != Phase.HIDE && phase != Phase.SEEK) return;
         if (!isGameWorld(event.getEntity().getWorld())) return;
         if (!(event.getEntity() instanceof Player player)) return;
+        event.setCancelled(true);
         switch (event.getCause()) {
         case VOID:
-            event.setCancelled(true);
             Bukkit.getScheduler().runTask(this, () -> {
                     teleporting = true;
                     player.teleport(getHideLocation());
@@ -1068,7 +1068,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         case FIRE:
         case LAVA:
             if (!hiders.contains(player.getUniqueId())) return;
-            event.setCancelled(true);
             Bukkit.getScheduler().runTask(this, () -> {
                     player.setFireTicks(0);
                     player.sendMessage(text("Burning returns you to spawn!",
