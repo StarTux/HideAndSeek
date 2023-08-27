@@ -457,8 +457,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 }
                 event.addWinners(getSeekers());
             } else {
+                List<String> names = new ArrayList<>();
                 for (Player hider : getHiders()) {
-                    addFairness(hider, 1);
+                    addFairness(hider, 5);
+                    names.add(hider.getName());
                     if (tag.event) {
                         addScore(hider.getUniqueId(), 1);
                     }
@@ -471,6 +473,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 0.125f, 2.0f);
                     player.showTitle(Title.title(text("Hiders win!", GREEN),
                                                  empty()));
+                    player.sendMessage(textOfChildren(text("Hiders win: ", GREEN),
+                                                      text(String.join(" ", names), WHITE)));
                 }
                 event.addWinners(getHiders());
             }
