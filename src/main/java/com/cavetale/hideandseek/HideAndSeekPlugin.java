@@ -974,6 +974,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     if (org.bukkit.Tag.SIGNS.isTagged(material)) return;
                     if (MaterialTags.SKULLS.isTagged(material)) return;
                     if (block.getBlockData() instanceof Bisected) return;
+                    if (org.bukkit.Tag.BANNERS.isTagged(material)) return;
                     break;
                 }
                 itemCooldown.put(player.getUniqueId(), then);
