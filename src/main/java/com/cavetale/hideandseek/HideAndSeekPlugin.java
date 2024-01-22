@@ -72,7 +72,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
@@ -263,21 +262,21 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         ItemStack potion = new ItemStack(Material.POTION);
         potion.editMeta(m -> {
                 if (m instanceof PotionMeta meta) {
-                    meta.setBasePotionData(new PotionData(PotionType.NIGHT_VISION, true, false));
+                    meta.setBasePotionType(PotionType.LONG_NIGHT_VISION);
                 }
             });
         seeker.getInventory().addItem(potion);
         potion = new ItemStack(Material.POTION);
         potion.editMeta(m -> {
                 if (m instanceof PotionMeta meta) {
-                    meta.setBasePotionData(new PotionData(PotionType.SLOW_FALLING, false, false));
+                    meta.setBasePotionType(PotionType.SLOW_FALLING);
                 }
             });
         seeker.getInventory().addItem(potion);
         potion = new ItemStack(Material.POTION);
         potion.editMeta(m -> {
                 if (m instanceof PotionMeta meta) {
-                    meta.setBasePotionData(new PotionData(PotionType.SPEED, true, false));
+                    meta.setBasePotionType(PotionType.LONG_SWIFTNESS);
                 }
             });
         seeker.getInventory().addItem(potion);
