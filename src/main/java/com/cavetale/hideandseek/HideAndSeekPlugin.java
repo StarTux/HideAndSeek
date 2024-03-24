@@ -461,7 +461,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     addFairness(hider, 5);
                     names.add(hider.getName());
                     if (tag.event) {
-                        addScore(hider.getUniqueId(), 1);
+                        addScore(hider.getUniqueId(), 3);
                     }
                     if (tag.event) {
                         consoleCommand("titles unlockset " + hider.getName() + " Hider Sneaky");
