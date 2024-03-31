@@ -663,7 +663,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 target = hiderLoc;
             }
         }
-        final int minDistance = 16;
+        final int minDistance = 32;
         if (target == null || min < (minDistance * minDistance)) {
             // Spin in circles
             double fraction = ((double) (ticks % 50)) / 50.0;
