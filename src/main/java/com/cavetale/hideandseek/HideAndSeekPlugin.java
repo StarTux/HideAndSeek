@@ -194,7 +194,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             .collect(Collectors.toList());
         Collections.shuffle(players);
         Collections.sort(players, (a, b) -> Integer.compare(getFairness(b), getFairness(a)));
-        int half = Math.max(1, (players.size() * 2) / 3);
+        int half = Math.max(1, (players.size() * 3) / 4);
         hiders.clear();
         hiderPrefixMap.clear();
         seekers.clear();
