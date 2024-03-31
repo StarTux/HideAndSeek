@@ -822,7 +822,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (tag.event) {
             addScore(seeker.getUniqueId(), 1);
             computeHighscore();
-            Money.get().give(hider.getUniqueId(), 100.0, this, "Hide and Seek");
+            Money.get().give(seeker.getUniqueId(), 100.0, this, "Hide and Seek");
         }
         bonusTicks = Math.max(bonusTicks, tag.bonusTime * 20);
         Component message = text(seeker.getName() + " discovered " + hider.getName() + "!",
