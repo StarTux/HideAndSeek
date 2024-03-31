@@ -8,6 +8,7 @@ import com.cavetale.core.event.minigame.MinigameMatchType;
 import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.font.VanillaItems;
 import com.cavetale.core.item.ItemKinds;
+import com.cavetale.core.money.Money;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.item.mobface.MobFace;
@@ -462,9 +463,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     names.add(hider.getName());
                     if (tag.event) {
                         addScore(hider.getUniqueId(), 3);
-                    }
-                    if (tag.event) {
                         consoleCommand("titles unlockset " + hider.getName() + " Hider Sneaky");
+                        Money.get().give(hider.getUniqueId(), 1000.0, this, "Hide and Seek");
                     }
                 }
                 if (tag.event) computeHighscore();
@@ -822,6 +822,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (tag.event) {
             addScore(seeker.getUniqueId(), 1);
             computeHighscore();
+            Money.get().give(hider.getUniqueId(), 100.0, this, "Hide and Seek");
         }
         bonusTicks = Math.max(bonusTicks, tag.bonusTime * 20);
         Component message = text(seeker.getName() + " discovered " + hider.getName() + "!",
