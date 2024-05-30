@@ -298,7 +298,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     EntityType.SHEEP, EntityType.PIG, EntityType.BAT,
                     EntityType.GLOW_SQUID, EntityType.BEE,
                     EntityType.CAT, EntityType.WOLF,
-                    EntityType.SNOWMAN, EntityType.RABBIT,
+                    EntityType.SNOW_GOLEM, EntityType.RABBIT,
                     EntityType.AXOLOTL, EntityType.GOAT);
         List<Material> blocks = Arrays
             .asList(Material.GRASS_BLOCK,
@@ -596,7 +596,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     if (getTimeLeft() < tag.glowTime) {
                         hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false));
                     }
-                    hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 3, true, false));
+                    hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 3, true, false));
                 }
             }
             for (Player seeker : getSeekers()) {
