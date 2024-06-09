@@ -28,6 +28,7 @@ public final class EntityDisguise implements Disguise {
             });
         if (entity instanceof LivingEntity living) {
             living.setInvulnerable(true);
+            living.setCollidable(false);
         }
         if (entity instanceof Mob mob) {
             mob.setAware(false);
