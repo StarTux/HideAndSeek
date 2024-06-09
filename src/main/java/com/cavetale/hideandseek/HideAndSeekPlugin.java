@@ -228,6 +228,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 hider.getInventory().addItem(rerollFoot(3));
                 hider.getInventory().addItem(makeInvisItem(1));
             }
+            hider.getInventory().addItem(makeCenterItem(1));
             ItemStack potion = new ItemStack(Material.POTION);
             potion.editMeta(m -> {
                     if (m instanceof PotionMeta meta) {
@@ -538,7 +539,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         for (Player online : Bukkit.getOnlinePlayers()) {
             if (online == player) continue;
             if (disguiseMap.get(online.getUniqueId()) != null) {
-                player.hidePlayer(online);
+                player.hidePlayer(this, online);
             }
         }
         if (phase != Phase.IDLE) {
@@ -1035,6 +1036,21 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             useInvisItem(player);
             item.subtract(1);
             break;
+        case WOODEN_HOE: {
+            event.setCancelled(true);
+            if (player.getCooldown(Material.WOODEN_HOE) > 0) return;
+            final Block playerBlock = player.getLocation().getBlock();
+            if (!playerBlock.isEmpty()) {
+                player.sendMessage(text("Block is not empty!", RED));
+                return;
+            }
+            player.setCooldown(Material.WOODEN_HOE, 200);
+            final Location location = playerBlock.getLocation().add(0.5, 0.5, 0.5);
+            player.teleport(location);
+            player.sendMessage(text("Teleported to block center", GREEN));
+            player.getWorld().playSound(location, Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1f, 1f);
+            break;
+        }
         default: return;
         }
         event.setCancelled(true);
@@ -1240,6 +1256,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                                   text("Points to the nearest", GRAY),
                                   text("hider but goes wild", GRAY),
                                   text("when you're too close", GRAY)));
+    }
+
+    protected ItemStack makeCenterItem(int amount) {
+        return Mytems.YARDSTICK.createIcon(List.of(text("Center Block", LIGHT_PURPLE),
+                                                   text("Warp to the center", GRAY),
+                                                   text("of the current block", GRAY),
+                                                   textOfChildren(Mytems.MOUSE_RIGHT, text(" to center", GRAY))));
     }
 
     protected void summonDistraction(Player player) {
