@@ -44,4 +44,18 @@ public final class EntityDisguise implements Disguise {
             entity = null;
         }
     }
+
+    @Override
+    public void glow() {
+        if (entity != null) {
+            entity.setGlowing(true);
+        }
+    }
+
+    @Override
+    public void unglow() {
+        if (entity != null) {
+            entity.setGlowing(false);
+        }
+    }
 }

@@ -11,4 +11,8 @@ public interface Disguise {
     void disguise(Player player);
 
     void undisguise(Player player);
+
+    void glow();
+
+    void unglow();
 }

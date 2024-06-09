@@ -51,4 +51,18 @@ public final class BlockDisguise implements Disguise {
         in.setPitch(0f);
         return in;
     }
+
+    @Override
+    public void glow() {
+        if (blockDisplay != null) {
+            blockDisplay.setGlowing(true);
+        }
+    }
+
+    @Override
+    public void unglow() {
+        if (blockDisplay != null) {
+            blockDisplay.setGlowing(false);
+        }
+    }
 }

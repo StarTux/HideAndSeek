@@ -629,7 +629,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 }
                 if (ticks % 20 == 0) {
                     if (getTimeLeft() < tag.glowTime) {
-                        hider.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 1, true, false));
+                        Disguise disguise = disguiseMap.get(hider.getUniqueId());
+                        if (disguise != null) disguise.glow();
                     }
                     hider.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 3, true, false));
                 }
@@ -871,6 +872,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         if (tag.event) {
             consoleCommand("ml add " + seeker.getName());
             consoleCommand("titles unlockset " + seeker.getName() + " Seeker Detective");
+        }
+        for (Player it : getHiders()) {
+            Disguise disguise = disguiseMap.get(it.getUniqueId());
+            if (disguise != null) disguise.unglow();
         }
         return true;
     }
