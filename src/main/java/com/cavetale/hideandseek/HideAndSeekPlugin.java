@@ -43,6 +43,7 @@ import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Bisected;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -71,7 +72,6 @@ import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -99,7 +99,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected Random random = new Random();
     protected Tag tag;
     protected File tagFile;
-    protected Map<UUID, Enum> disguises = new HashMap<>();
+    protected Map<UUID, Disguise> disguiseMap = new HashMap<>();
     protected Map<UUID, Long> itemCooldown = new HashMap<>();
     protected Map<UUID, Component> hiderPrefixMap = new HashMap<>();
     protected Set<Entity> distractions = new HashSet<>();
@@ -164,11 +164,9 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected void stopGame() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.getInventory().clear();
+            undisguise(player);
         }
-        disguises.clear();
-        for (Player hider : getHiders()) {
-            undisguise(hider);
-        }
+        disguiseMap.clear();
         hiders.clear();
         seekers.clear();
         setPhase(Phase.IDLE);
@@ -183,11 +181,13 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     protected boolean startGame() {
         for (Player player : Bukkit.getOnlinePlayers()) {
+            undisguise(player);
             player.setHealth(20.0);
             player.getInventory().clear();
             for (var potionEffect : player.getActivePotionEffects()) {
                 player.removePotionEffect(potionEffect.getType());
             }
+            player.teleport(getWorld().getSpawnLocation());
         }
         List<Player> players = Bukkit.getOnlinePlayers().stream()
             .filter(p -> p.getGameMode() != GameMode.SPECTATOR)
@@ -205,7 +205,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
         for (int i = 0; i < players.size(); i += 1) {
             Player player = players.get(i);
-            undisguise(player);
             if (i < half) {
                 hiders.add(player.getUniqueId());
             } else {
@@ -220,7 +219,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             hider.teleport(getHideLocation());
             hider.showTitle(Title.title(text("Hide!", GREEN),
                                         text("You're a Hider", GREEN)));
-            if (disguises.get(hider.getUniqueId()) instanceof EntityType) {
+            if (disguiseMap.get(hider.getUniqueId()) instanceof EntityDisguise) {
                 hider.getInventory().addItem(summonWheat(1));
             }
             if (random.nextBoolean()) {
@@ -299,7 +298,8 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     EntityType.GLOW_SQUID, EntityType.BEE,
                     EntityType.CAT, EntityType.WOLF,
                     EntityType.SNOW_GOLEM, EntityType.RABBIT,
-                    EntityType.AXOLOTL, EntityType.GOAT);
+                    EntityType.AXOLOTL, EntityType.GOAT,
+                    EntityType.ARMADILLO);
         List<Material> blocks = Arrays
             .asList(Material.GRASS_BLOCK,
                     Material.DIRT,
@@ -330,44 +330,74 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                     );
         Enum enume;
         if (random.nextBoolean()) {
-            enume = blocks.get(random.nextInt(blocks.size()));
+            final Material material = blocks.get(random.nextInt(blocks.size()));
+            disguise(player, material.createBlockData());
         } else {
-            enume = animals.get(random.nextInt(animals.size()));
-        }
-        disguise(player, enume);
-    }
-
-    protected void disguise(Player player, Enum enume) {
-        player.setMetadata("nostream", new FixedMetadataValue(this, true));
-        if (enume instanceof EntityType type) {
-            disguises.put(player.getUniqueId(), enume);
-            consoleCommand("disguiseplayer " + player.getName() + " " + type.name().toLowerCase());
-            MobFace mobFace = MobFace.of(type);
-            Component prefix = mobFace != null
-                ? textOfChildren(text("["), mobFace.mytems, text("]")).color(GREEN)
-                : text("[" + entityName(type) + "]", GREEN);
-            hiderPrefixMap.put(player.getUniqueId(), prefix);
-        } else if (enume instanceof Material) {
-            disguises.put(player.getUniqueId(), enume);
-            Material material = (Material) enume;
-            consoleCommand("disguiseplayer " + player.getName() + " falling_block " + material.name().toLowerCase());
-            VanillaItems vi = VanillaItems.of(material);
-            final Component prefix;
-            if (vi != null) {
-                prefix = textOfChildren(text("[", GREEN), vi, text("]", GREEN));
-            } else {
-                prefix = text("[" + blockName(material) + "]", GREEN);
-            }
-            hiderPrefixMap.put(player.getUniqueId(), prefix);
+            final EntityType entityType = animals.get(random.nextInt(animals.size()));
+            disguise(player, entityType);
         }
     }
 
-    protected void redisguise(Player player) {
-        Enum enume = disguises.get(player.getUniqueId());
-        if (enume == null) {
+    public void disguise(Player player, BlockData blockData) {
+        undisguise(player);
+        VanillaItems vi = VanillaItems.of(blockData.getMaterial());
+        final Component prefix;
+        if (vi != null) {
+            prefix = textOfChildren(text("[", GREEN), vi, text("]", GREEN));
+        } else {
+            prefix = text("[" + blockName(blockData.getMaterial()) + "]", GREEN);
+        }
+        hiderPrefixMap.put(player.getUniqueId(), prefix);
+        final BlockDisguise disguise = new BlockDisguise(blockData);
+        disguiseMap.put(player.getUniqueId(), disguise);
+        disguise.disguise(player);
+        hidePlayer(player);
+    }
+
+    public void disguise(Player player, EntityType entityType) {
+        undisguise(player);
+        MobFace mobFace = MobFace.of(entityType);
+        Component prefix = mobFace != null
+            ? textOfChildren(text("["), mobFace.mytems, text("]")).color(GREEN)
+            : text("[" + entityName(entityType) + "]", GREEN);
+        hiderPrefixMap.put(player.getUniqueId(), prefix);
+        final EntityDisguise disguise = new EntityDisguise(entityType);
+        disguiseMap.put(player.getUniqueId(), disguise);
+        disguise.disguise(player);
+        hidePlayer(player);
+    }
+
+    public void redisguise(Player player) {
+        final Disguise disguise = disguiseMap.remove(player.getUniqueId());
+        if (disguise == null) {
             disguise(player);
         } else {
-            disguise(player, enume);
+            disguise.undisguise(player);
+            disguise.disguise(player);
+            hidePlayer(player);
+        }
+    }
+
+    public boolean undisguise(Player player) {
+        final Disguise disguise = disguiseMap.remove(player.getUniqueId());
+        if (disguise == null) return false;
+        disguise.undisguise(player);
+        unhidePlayer(player);
+        TitlePlugin.getInstance().setPlayerListPrefix(player, (Component) null);
+        return true;
+    }
+
+    private void hidePlayer(Player player) {
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            if (other == player) continue;
+            other.hidePlayer(this, player);
+        }
+    }
+
+    private void unhidePlayer(Player player) {
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            if (other == player) continue;
+            other.showPlayer(this, player);
         }
     }
 
@@ -396,12 +426,6 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     private String entityName(EntityType type) {
         return toCamelCase(type);
-    }
-
-    private void undisguise(Player player) {
-        player.removeMetadata("nostream", this);
-        consoleCommand("undisguiseplayer " + player.getName());
-        TitlePlugin.getInstance().setPlayerListPrefix(player, (Component) null);
     }
 
     private List<Player> getHiders() {
@@ -510,8 +534,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     private void onPlayerJoin(PlayerJoinEvent event) {
+        final Player player = event.getPlayer();
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online == player) continue;
+            if (disguiseMap.get(online.getUniqueId()) != null) {
+                player.hidePlayer(online);
+            }
+        }
         if (phase != Phase.IDLE) {
-            Player player = event.getPlayer();
             seekers.add(player.getUniqueId());
             giveSeekerItems(player);
         } else if (gameScheduler.isStarted()) {
@@ -541,6 +571,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
 
     private void onTick() {
         for (Player player : getServer().getOnlinePlayers()) {
+            final Disguise disguise = disguiseMap.get(player.getUniqueId());
+            if (disguise != null) {
+                disguise.tick(player);
+            }
             player.setFoodLevel(20);
             player.setSaturation(20.0f);
             if (isSeeker(player)) {
@@ -984,7 +1018,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 player.sendMessage(message);
                 player.sendActionBar(message);
                 undisguise(player);
-                disguise(player, material);
+                disguise(player, block.getBlockData());
             } else {
                 Component message = text("You're not hiding!", RED);
                 player.sendMessage(message);
@@ -1166,16 +1200,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         return Items.text(new ItemStack(Material.ENDER_EYE, amount),
                           text("Hint (Meow)", LIGHT_PURPLE),
                           text("Make all hiders meow", GRAY),
-                          text("Right-Click", GREEN)
-                          .append(text(" to use", GRAY)));
+                          textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY)));
     }
 
     protected ItemStack summonWheat(int amount) {
         return Items.text(new ItemStack(Material.WHEAT, amount),
                           text("Summon distraction", LIGHT_PURPLE),
                           text("Spawn in a mob near you"),
-                          text("Right-Click", GREEN)
-                          .append(text(" to use", GRAY)));
+                          textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY)));
     }
 
     protected ItemStack rerollFoot(int amount) {
@@ -1183,8 +1215,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                           text("Reroll disguise", LIGHT_PURPLE),
                           text("Switch to a different", GRAY),
                           text("random disguise", GRAY),
-                          text("Right-Click", GREEN)
-                          .append(text(" to use", GRAY)));
+                          textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY)));
     }
 
     protected ItemStack copySlime(int amount) {
@@ -1192,8 +1223,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                           text("Copy slime", GREEN),
                           text("Disguise as a", GRAY),
                           text("certain block", GRAY),
-                          text("Right-Click", GREEN)
-                          .append(text(" a block to use", GRAY)));
+                          textOfChildren(Mytems.MOUSE_RIGHT, text(" a block to use", GRAY)));
     }
 
     protected ItemStack makeInvisItem(int amount) {
@@ -1201,8 +1231,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                           text("Become Invisible", LIGHT_PURPLE),
                           text("Become invisible", GRAY),
                           text("for 10 seconds", GRAY),
-                          text("Right-Click", GREEN)
-                          .append(text(" to vanish", GRAY)));
+                          textOfChildren(Mytems.MOUSE_RIGHT, text(" to vanish", GRAY)));
     }
 
     protected ItemStack makeCompass(int amount) {
@@ -1214,10 +1243,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     protected void summonDistraction(Player player) {
-        Enum enume = disguises.get(player.getUniqueId());
+        final Disguise disguise = disguiseMap.get(player.getUniqueId());
+        if (disguise == null) return;
         EntityType type;
-        if (enume instanceof EntityType) {
-            type = (EntityType) enume;
+        if (disguise instanceof EntityDisguise entityDisguise) {
+            type = entityDisguise.getEntityType();
         } else {
             List<EntityType> types = Arrays
                 .asList(EntityType.BEE,

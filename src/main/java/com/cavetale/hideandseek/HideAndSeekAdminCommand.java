@@ -6,9 +6,13 @@ import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.playercache.PlayerCache;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.text;
@@ -37,6 +41,22 @@ public final class HideAndSeekAdminCommand extends AbstractCommand<HideAndSeekPl
         rootNode.addChild("testdisguise").denyTabCompletion()
             .description("Test disguise")
             .playerCaller(this::testDisguise);
+        rootNode.addChild("undisguise").arguments("<player>")
+            .completers(CommandArgCompleter.NULL)
+            .playerCaller(this::undisguise);
+        // Disguise
+        final CommandNode disguiseNode = rootNode.addChild("disguise")
+            .description("Disguise a player");
+        disguiseNode.addChild("block").arguments("<player> <block>")
+            .description("Disguise a player as a block")
+            .completers(CommandArgCompleter.NULL,
+                        CommandArgCompleter.enumLowerList(Material.class))
+            .senderCaller(this::disguiseBlock);
+        disguiseNode.addChild("entity").arguments("<player> <entity>")
+            .description("Disguise a player as an entity")
+            .completers(CommandArgCompleter.NULL,
+                        CommandArgCompleter.enumLowerList(EntityType.class))
+            .senderCaller(this::disguiseEntity);
         // Score
         CommandNode scoreNode = rootNode.addChild("score")
             .description("Score commands");
@@ -117,6 +137,39 @@ public final class HideAndSeekAdminCommand extends AbstractCommand<HideAndSeekPl
     private void testDisguise(Player player) {
         plugin.disguise(player);
         player.sendMessage(text("Player disguised", YELLOW));
+    }
+
+    private boolean undisguise(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        final Player target = CommandArgCompleter.requirePlayer(args[0]);
+        if (!plugin.undisguise(target)) {
+            throw new CommandWarn(target.getName() + " was not disguised");
+        }
+        sender.sendMessage(text("Undisguised " + sender.getName(), YELLOW));
+        return true;
+    }
+    private boolean disguiseBlock(CommandSender sender, String[] args) {
+        if (args.length < 2) return false;
+        final String blockArg = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        final Player target = CommandArgCompleter.requirePlayer(args[0]);
+        final BlockData blockData;
+        try {
+            blockData = Bukkit.createBlockData(blockArg);
+        } catch (IllegalArgumentException iae) {
+            throw new CommandWarn("BlockData expected: " + blockArg);
+        }
+        plugin.disguise(target, blockData);
+        sender.sendMessage(text("Disguised " + sender.getName() + " as " + blockData.getAsString(false), YELLOW));
+        return true;
+    }
+
+    private boolean disguiseEntity(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        final Player target = CommandArgCompleter.requirePlayer(args[0]);
+        final EntityType entityType = CommandArgCompleter.requireEnum(EntityType.class, args[1]);
+        plugin.disguise(target, entityType);
+        sender.sendMessage(text("Disguised " + sender.getName() + " as " + entityType, YELLOW));
+        return true;
     }
 
     private void scoreReset(CommandSender sender) {
