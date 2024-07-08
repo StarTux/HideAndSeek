@@ -1,5 +1,6 @@
 package com.cavetale.hideandseek;
 
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 /**
@@ -15,4 +16,6 @@ public interface Disguise {
     void glow();
 
     void unglow();
+
+    void onTeleport(Player player, Location from, Location to);
 }

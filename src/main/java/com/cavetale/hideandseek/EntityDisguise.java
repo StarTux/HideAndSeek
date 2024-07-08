@@ -2,6 +2,7 @@ package com.cavetale.hideandseek;
 
 import lombok.Data;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -56,6 +57,13 @@ public final class EntityDisguise implements Disguise {
     public void unglow() {
         if (entity != null) {
             entity.setGlowing(false);
+        }
+    }
+
+    @Override
+    public void onTeleport(Player player, Location from, Location to) {
+        if (entity != null) {
+            entity.teleport(player);
         }
     }
 }

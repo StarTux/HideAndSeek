@@ -65,4 +65,11 @@ public final class BlockDisguise implements Disguise {
             blockDisplay.setGlowing(false);
         }
     }
+
+    @Override
+    public void onTeleport(Player player, Location from, Location to) {
+        if (blockDisplay != null) {
+            blockDisplay.teleport(fixLocation(to));
+        }
+    }
 }

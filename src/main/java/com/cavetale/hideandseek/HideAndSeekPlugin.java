@@ -550,7 +550,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     private void onPlayerTeleport(PlayerTeleportEvent event) {
         if (teleporting) return;
         if (!isGameWorld(event.getPlayer().getWorld())) return;
@@ -563,6 +563,14 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         Component message = text("You're not a seeker!", RED);
         player.sendMessage(message);
         player.sendActionBar(message);
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    private void onDisguisedPlayerTeleport(PlayerTeleportEvent event) {
+        final Player player = event.getPlayer();
+        final Disguise disguise = disguiseMap.get(player.getUniqueId());
+        if (disguise == null) return;
+        disguise.onTeleport(player, event.getFrom(), event.getTo());
     }
 
     private boolean consoleCommand(String cmd) {
