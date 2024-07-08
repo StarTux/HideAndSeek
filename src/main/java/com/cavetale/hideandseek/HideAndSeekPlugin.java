@@ -96,6 +96,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected int bonusTicks = 0;
     protected Set<UUID> hiders = new HashSet<>();
     protected Set<UUID> seekers = new HashSet<>();
+    protected Map<UUID, Integer> seekerScores = new HashMap<>();
     protected Random random = new Random();
     protected Tag tag;
     protected File tagFile;
@@ -169,6 +170,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         disguiseMap.clear();
         hiders.clear();
         seekers.clear();
+        seekerScores.clear();
         setPhase(Phase.IDLE);
         for (Entity entity : distractions) {
             entity.remove();
@@ -480,7 +482,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                                                  empty()));
                     player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 0.125f, 2.0f);
                 }
-                event.addWinners(getSeekers());
+                for (UUID seeker : seekers) {
+                    if (seekerScores.getOrDefault(seeker, 0) > 0) {
+                        event.addWinnerUuid(seeker);
+                    }
+                }
             } else {
                 List<String> names = new ArrayList<>();
                 for (Player hider : getHiders()) {
@@ -863,6 +869,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seekers.add(hider.getUniqueId());
         giveSeekerItems(hider);
         addFairness(seeker, 1);
+        addSeekerScore(seeker.getUniqueId(), 1);
         if (tag.event) {
             addScore(seeker.getUniqueId(), 1);
             computeHighscore();
@@ -1195,6 +1202,11 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         int newVal = Math.max(0, val + amount);
         tag.fairness.put(uuid, newVal);
         return val + newVal;
+    }
+
+    public void addSeekerScore(UUID uuid, int amount) {
+        final int score = seekerScores.getOrDefault(uuid, 0);
+        seekerScores.put(uuid, score + amount);
     }
 
     public int getScore(UUID uuid) {
