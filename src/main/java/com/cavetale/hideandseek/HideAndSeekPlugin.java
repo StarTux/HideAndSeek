@@ -216,7 +216,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             player.getInventory().clear();
         }
         for (Player hider : getHiders()) {
-            addFairness(hider, -2);
+            tag.fairness.put(hider.getUniqueId(), 0); // Clear fairness
             disguise(hider);
             hider.teleport(getHideLocation());
             hider.showTitle(Title.title(text("Hide!", GREEN),
@@ -490,7 +490,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             } else {
                 List<String> names = new ArrayList<>();
                 for (Player hider : getHiders()) {
-                    addFairness(hider, 5);
+                    addFairness(hider, 1);
                     names.add(hider.getName());
                     if (tag.event) {
                         addScore(hider.getUniqueId(), 3);
