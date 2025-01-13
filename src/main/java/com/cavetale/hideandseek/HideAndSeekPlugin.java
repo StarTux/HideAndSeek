@@ -379,6 +379,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     private void hidePlayer(Player player) {
+        player.setInvisible(true);
         for (Player other : Bukkit.getOnlinePlayers()) {
             if (other == player) continue;
             other.hidePlayer(this, player);
@@ -386,6 +387,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     private void unhidePlayer(Player player) {
+        player.setInvisible(false);
         for (Player other : Bukkit.getOnlinePlayers()) {
             if (other == player) continue;
             other.showPlayer(this, player);
