@@ -232,12 +232,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             }
             hider.getInventory().addItem(makeCenterItem(1));
             ItemStack potion = new ItemStack(Material.POTION);
-            potion.editMeta(m -> {
-                    if (m instanceof PotionMeta meta) {
-                        meta.addCustomEffect(new PotionEffect(PotionEffectType.LEVITATION, 20 * 12, 1, false, true, true), true);
-                        meta.setColor(Color.PURPLE);
-                    }
-                    m.displayName(text("Potion of Levitation", WHITE).decoration(ITALIC, false));
+            potion.editMeta(PotionMeta.class, meta -> {
+                    meta.addCustomEffect(new PotionEffect(PotionEffectType.LEVITATION, 20 * 12, 1, false, true, true), true);
+                    meta.setColor(Color.PURPLE);
+                    meta.displayName(text("Potion of Levitation", WHITE).decoration(ITALIC, false));
                 });
             hider.getInventory().addItem(potion);
         }
@@ -263,33 +261,23 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         seeker.getInventory().addItem(new ItemStack(Material.ENDER_PEARL));
         seeker.getInventory().addItem(new ItemStack(Material.SPYGLASS));
         ItemStack potion = new ItemStack(Material.POTION);
-        potion.editMeta(m -> {
-                if (m instanceof PotionMeta meta) {
-                    meta.setBasePotionType(PotionType.LONG_NIGHT_VISION);
-                }
+        potion.editMeta(PotionMeta.class, meta -> meta.setBasePotionType(PotionType.LONG_NIGHT_VISION));
+        seeker.getInventory().addItem(potion);
+        potion = new ItemStack(Material.POTION);
+        potion.editMeta(PotionMeta.class, meta -> {
+                    meta.addCustomEffect(new PotionEffect(PotionEffectType.LEVITATION, 20 * 20, 1, false, true, true), true);
+                    meta.setColor(Color.PURPLE);
+                    meta.displayName(text("Potion of Levitation", WHITE).decoration(ITALIC, false));
             });
         seeker.getInventory().addItem(potion);
         potion = new ItemStack(Material.POTION);
-        potion.editMeta(m -> {
-                if (m instanceof PotionMeta meta) {
-                    meta.setBasePotionType(PotionType.SLOW_FALLING);
-                }
-            });
+        potion.editMeta(PotionMeta.class, meta -> meta.setBasePotionType(PotionType.LONG_SWIFTNESS));
         seeker.getInventory().addItem(potion);
         potion = new ItemStack(Material.POTION);
-        potion.editMeta(m -> {
-                if (m instanceof PotionMeta meta) {
-                    meta.setBasePotionType(PotionType.LONG_SWIFTNESS);
-                }
-            });
-        seeker.getInventory().addItem(potion);
-        potion = new ItemStack(Material.POTION);
-        potion.editMeta(m -> {
-                if (m instanceof PotionMeta meta) {
-                    meta.addCustomEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 20 * 30, 0, false, true, true), true);
-                    meta.setColor(Color.BLUE);
-                }
-                m.displayName(text("Potion of Dolphin's Grace", WHITE).decoration(ITALIC, false));
+        potion.editMeta(PotionMeta.class, meta -> {
+                meta.addCustomEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 20 * 30, 0, false, true, true), true);
+                meta.setColor(Color.BLUE);
+                meta.displayName(text("Potion of Dolphin's Grace", WHITE).decoration(ITALIC, false));
             });
         seeker.getInventory().addItem(potion);
     }
@@ -457,10 +445,10 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 0.125f, 2.0f);
                 // Find hiders that didn't move
                 if (hiders.contains(player.getUniqueId())) {
-                    Location location = player.getLocation();
-                    Location location2 = getHideLocation();
-                    if (!location.getWorld().equals(location2.getWorld())
-                        || location.distanceSquared(location2) < 9.0) {
+                    player.getInventory().remove(Material.POTION);
+                    final Location playerLocation = player.getLocation();
+                    final Location hideLocation = getHideLocation();
+                    if (!playerLocation.getWorld().equals(hideLocation.getWorld()) || playerLocation.distanceSquared(hideLocation) < 9.0) {
                         hiders.remove(player.getUniqueId());
                         undisguise(player);
                         hiders.remove(player.getUniqueId());
