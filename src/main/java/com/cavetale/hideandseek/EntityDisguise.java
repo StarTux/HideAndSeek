@@ -3,6 +3,7 @@ package com.cavetale.hideandseek;
 import lombok.Data;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.Bat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -40,6 +41,9 @@ public final class EntityDisguise implements Disguise {
             mob.setAware(false);
             mob.setAggressive(false);
             Bukkit.getMobGoals().removeAllGoals(mob);
+        }
+        if (entity instanceof Bat bat) {
+            bat.setAwake(true);
         }
     }
 
