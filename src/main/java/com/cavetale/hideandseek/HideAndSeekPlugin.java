@@ -71,6 +71,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.CompassMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
@@ -79,6 +80,8 @@ import org.bukkit.potion.PotionType;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 import static com.cavetale.core.font.Unicode.subscript;
+import static com.cavetale.mytems.util.Items.clearAttributes;
+import static com.cavetale.mytems.util.Items.tooltip;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.space;
@@ -705,18 +708,26 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
         }
         final int minDistance = 32;
         if (target == null || min < (minDistance * minDistance)) {
-            // Spin in circles
-            double fraction = ((double) (ticks % 50)) / 50.0;
-            double dx = 32.0 * Math.cos(fraction * Math.PI * 2.0);
-            double dz = 32.0 * Math.sin(fraction * Math.PI * 2.0);
-            seeker.setCompassTarget(loc.add(dx, 0.0, dz));
+            for (ItemStack item : seeker.getInventory()) {
+                if (item == null || item.getType() != Material.COMPASS) continue;
+                item.editMeta(CompassMeta.class, meta -> meta.setLodestone(null));
+            }
             return;
         }
-        Location targetLoc = new Location(seeker.getWorld(),
-                                          (double) (((target.getBlockX() / minDistance) * minDistance) + (minDistance / 2)),
-                                          loc.getBlockY(),
-                                          (double) (((target.getBlockZ() / minDistance) * minDistance) + (minDistance / 2)));
-        seeker.setCompassTarget(targetLoc);
+        final Location targetLoc = new Location(seeker.getWorld(),
+                                                (double) (((target.getBlockX() / minDistance) * minDistance) + (minDistance / 2)),
+                                                0.0,
+                                                (double) (((target.getBlockZ() / minDistance) * minDistance) + (minDistance / 2)));
+        for (ItemStack item : seeker.getInventory()) {
+            if (item == null || item.getType() != Material.COMPASS) continue;
+            item.editMeta(CompassMeta.class, meta -> {
+                    final Location compassTarget = meta.getLodestone();
+                    if (compassTarget == null || !compassTarget.getWorld().equals(targetLoc.getWorld()) || compassTarget.distanceSquared(targetLoc) > minDistance / 2) {
+                        meta.setLodestone(targetLoc);
+                    }
+                    meta.setLodestoneTracked(false);
+                });
+        }
     }
 
     @EventHandler
@@ -1228,56 +1239,58 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     protected ItemStack hintEye(int amount) {
-        return Items.text(new ItemStack(Material.ENDER_EYE, amount),
-                          text("Hint (Meow)", LIGHT_PURPLE),
-                          text("Make all hiders meow", GRAY),
-                          textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY)));
+        return tooltip(new ItemStack(Material.ENDER_EYE, amount),
+                       List.of(text("Hint (Meow)", LIGHT_PURPLE),
+                               text("Make all hiders meow", GRAY),
+                               textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY))));
     }
 
     protected ItemStack summonWheat(int amount) {
-        return Items.text(new ItemStack(Material.WHEAT, amount),
-                          text("Summon distraction", LIGHT_PURPLE),
-                          text("Spawn in a mob near you"),
-                          textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY)));
+        return tooltip(new ItemStack(Material.WHEAT, amount),
+                       List.of(text("Summon distraction", LIGHT_PURPLE),
+                               text("Spawn in a mob near you"),
+                               textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY))));
     }
 
     protected ItemStack rerollFoot(int amount) {
-        return Items.text(new ItemStack(Material.RABBIT_FOOT, amount),
-                          text("Reroll disguise", LIGHT_PURPLE),
-                          text("Switch to a different", GRAY),
-                          text("random disguise", GRAY),
-                          textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY)));
+        return tooltip(new ItemStack(Material.RABBIT_FOOT, amount),
+                       List.of(text("Reroll disguise", LIGHT_PURPLE),
+                               text("Switch to a different", GRAY),
+                               text("random disguise", GRAY),
+                               textOfChildren(Mytems.MOUSE_RIGHT, text(" to use", GRAY))));
     }
 
     protected ItemStack copySlime(int amount) {
-        return Items.text(new ItemStack(Material.SLIME_BALL, amount),
-                          text("Copy slime", GREEN),
-                          text("Disguise as a", GRAY),
-                          text("certain block", GRAY),
-                          textOfChildren(Mytems.MOUSE_RIGHT, text(" a block to use", GRAY)));
+        return tooltip(new ItemStack(Material.SLIME_BALL, amount),
+                       List.of(text("Copy slime", GREEN),
+                               text("Disguise as a", GRAY),
+                               text("certain block", GRAY),
+                               textOfChildren(Mytems.MOUSE_RIGHT, text(" a block to use", GRAY))));
     }
 
     protected ItemStack makeInvisItem(int amount) {
-        return Items.text(new ItemStack(Material.GLASS, amount),
-                          text("Become Invisible", LIGHT_PURPLE),
-                          text("Become invisible", GRAY),
-                          text("for 10 seconds", GRAY),
-                          textOfChildren(Mytems.MOUSE_RIGHT, text(" to vanish", GRAY)));
+        return tooltip(new ItemStack(Material.GLASS, amount),
+                       List.of(text("Become Invisible", LIGHT_PURPLE),
+                               text("Become invisible", GRAY),
+                               text("for 10 seconds", GRAY),
+                               textOfChildren(Mytems.MOUSE_RIGHT, text(" to vanish", GRAY))));
     }
 
     protected ItemStack makeCompass(int amount) {
-        return Items.text(new ItemStack(Material.COMPASS, amount),
-                          List.of(text("Hider Finder", GOLD),
-                                  text("Points to the nearest", GRAY),
-                                  text("hider but goes wild", GRAY),
-                                  text("when you're too close", GRAY)));
+        return tooltip(new ItemStack(Material.COMPASS, amount),
+                       List.of(text("Hider Finder", GOLD),
+                               text("Points to the nearest", GRAY),
+                               text("hider but goes wild", GRAY),
+                               text("when you're too close", GRAY)));
     }
 
     protected ItemStack makeCenterItem(int amount) {
-        return Mytems.YARDSTICK.createIcon(List.of(text("Center Block", LIGHT_PURPLE),
-                                                   text("Warp to the center", GRAY),
-                                                   text("of the current block", GRAY),
-                                                   textOfChildren(Mytems.MOUSE_RIGHT, text(" to center", GRAY))));
+        final ItemStack item = Mytems.YARDSTICK.createIcon(List.of(text("Center Block", LIGHT_PURPLE),
+                                                                   text("Warp to the center", GRAY),
+                                                                   text("of the current block", GRAY),
+                                                                   textOfChildren(Mytems.MOUSE_RIGHT, text(" to center", GRAY))));
+        item.editMeta(meta -> clearAttributes(meta));
+        return item;
     }
 
     protected void summonDistraction(Player player) {
