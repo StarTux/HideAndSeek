@@ -24,7 +24,9 @@ public final class BlockDisguise implements Disguise {
 
     @Override
     public void tick(Player player) {
-        if (blockDisplay != null) {
+        if (blockDisplay == null) {
+            disguise(player);
+        } else {
             if (!blockDisplay.isValid() || blockDisplay.isDead()) {
                 undisguise(player);
                 disguise(player);
