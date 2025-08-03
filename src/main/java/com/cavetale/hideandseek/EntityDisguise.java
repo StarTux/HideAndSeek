@@ -17,13 +17,11 @@ public final class EntityDisguise implements Disguise {
 
     @Override
     public void tick(Player player) {
-        if (entity != null) {
-            if (!entity.isValid()) {
-                undisguise(player);
-                disguise(player);
-            } else {
-                entity.teleport(player);
-            }
+        if (entity == null || !entity.isValid() || entity.isDead()) {
+            undisguise(player);
+            disguise(player);
+        } else {
+            entity.teleport(player);
         }
     }
 
