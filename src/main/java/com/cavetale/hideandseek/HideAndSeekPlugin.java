@@ -189,6 +189,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
             undisguise(player);
             player.setHealth(20.0);
             player.getInventory().clear();
+            player.getEnderChest().clear();
             for (var potionEffect : player.getActivePotionEffects()) {
                 player.removePotionEffect(potionEffect.getType());
             }
