@@ -363,7 +363,7 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     }
 
     public void redisguise(Player player) {
-        final Disguise disguise = disguiseMap.remove(player.getUniqueId());
+        final Disguise disguise = disguiseMap.get(player.getUniqueId());
         if (disguise == null) {
             disguise(player);
         } else {
