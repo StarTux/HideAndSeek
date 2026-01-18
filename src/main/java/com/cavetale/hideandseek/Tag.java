@@ -3,7 +3,9 @@ package com.cavetale.hideandseek;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import lombok.Getter;
 
+@Getter
 public final class Tag {
     protected String worldName;
     protected Map<UUID, Integer> fairness = new HashMap<>();

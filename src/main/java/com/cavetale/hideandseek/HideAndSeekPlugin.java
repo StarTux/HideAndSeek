@@ -12,7 +12,6 @@ import com.cavetale.core.money.Money;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.item.mobface.MobFace;
-import com.cavetale.mytems.item.trophy.TrophyCategory;
 import com.destroystokyo.paper.MaterialTags;
 import com.destroystokyo.paper.event.player.PlayerLaunchProjectileEvent;
 import com.winthier.spawn.Spawn;
@@ -30,6 +29,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
@@ -91,6 +91,7 @@ import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
 
+@Getter
 public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected static HideAndSeekPlugin instance;
     protected Phase phase = Phase.IDLE;
@@ -1342,13 +1343,5 @@ public final class HideAndSeekPlugin extends JavaPlugin implements Listener {
     protected void computeHighscore() {
         highscore = Highscore.of(tag.scores);
         highscoreLines = Highscore.sidebar(highscore);
-    }
-
-    protected int rewardHighscore() {
-        return Highscore.reward(tag.scores,
-                                "hide_and_seek",
-                                TrophyCategory.HIDE_AND_SEEK,
-                                TITLE,
-                                hi -> "You collected " + hi.score + " point" + (hi.score == 1 ? "" : "s"));
     }
 }
