@@ -7,6 +7,7 @@ import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
+import com.winthier.kit.Kits;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -198,12 +199,8 @@ public final class HideAndSeekAdminCommand extends AbstractCommand<HideAndSeekPl
             hi -> "You collected " + hi.score + " point" + (hi.score == 1 ? "" : "s")
         );
         sender.sendMessage(text(res + " players rewarded", AQUA));
-        Highscore.rewardMoneyWithFeedback(
-            sender,
-            plugin,
-            plugin.getTag().getScores(),
-            "Hide and Seek"
-        );
+        Highscore.rewardMoneyWithFeedback(sender, plugin, plugin.getTag().getScores(), "Hide and Seek");
+        Kits.autoCreateKit(sender, "hide_and_seek", plugin.getTag().getScores().keySet());
     }
 
     private void configSave(CommandSender sender) {
